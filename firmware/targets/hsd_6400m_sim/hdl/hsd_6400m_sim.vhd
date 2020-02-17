@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2020-02-07
+-- Last update: 2020-02-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -394,8 +394,8 @@ begin
     for i in 0 to 1 loop
       a := 1024*16+256*(i+1);
       wreg(a+ 4,x"00000000"); -- partition
-      wreg(a+ 8,x"00100000"); -- fifoPauseThresh
-      wreg(a+32,x"00000000"); -- triggerDelay
+      wreg(a+ 8,x"00000010"); -- fifoPauseThresh
+      wreg(a+12,x"00000000"); -- triggerDelay
       wreg(a+ 0,x"00000003"); -- enable
     end loop;
 

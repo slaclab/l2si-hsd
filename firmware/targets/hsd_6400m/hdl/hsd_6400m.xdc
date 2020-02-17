@@ -114,13 +114,14 @@ set_clock_groups -asynchronous \
                  -group [get_clocks pciClk] \
                  -group [get_clocks pipeClk]
 
-create_generated_clock -name timingFbClk [get_pins {U_Core/GEN_NOSIM.U_TimingGth/GEN_EXTREF.U_TimingGthCore/inst/gen_gtwizard_gthe3_top.TimingGth_extref_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_channel_container[0].gen_enabled_channel.gthe3_channel_wrapper_inst/channel_inst/gthe3_channel_gen.gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST/TXOUTCLK}]
+create_generated_clock -name timingFbClk [get_pins {U_Core/U_TimingGth/GEN_EXTREF.U_TimingGthCore/inst/gen_gtwizard_gthe3_top.TimingGth_extref_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_channel_container[0].gen_enabled_channel.gthe3_channel_wrapper_inst/channel_inst/gthe3_channel_gen.gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST/TXOUTCLK}]
 
-create_generated_clock -name evrClk [get_pins {U_Core/GEN_NOSIM.U_TimingGth/GEN_EXTREF.U_TimingGthCore/inst/gen_gtwizard_gthe3_top.TimingGth_extref_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_channel_container[0].gen_enabled_channel.gthe3_channel_wrapper_inst/channel_inst/gthe3_channel_gen.gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST/RXOUTCLK}]
+create_generated_clock -name evrClk [get_pins {U_Core/U_TimingGth/GEN_EXTREF.U_TimingGthCore/inst/gen_gtwizard_gthe3_top.TimingGth_extref_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_channel_container[0].gen_enabled_channel.gthe3_channel_wrapper_inst/channel_inst/gthe3_channel_gen.gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST/RXOUTCLK}]
 
 set_clock_groups -asynchronous \
                  -group [get_clocks timingFbClk] \
                  -group [get_clocks evrClk]
+
 
 set_false_path -from [get_pins {U_QuadCore/GEN_FMC[0].U_ChipAdcCore/dmaRstI_reg[2]/C}]
 set_false_path -from [get_pins {U_QuadCore/GEN_FMC[1].U_ChipAdcCore/dmaRstI_reg[2]/C}]
