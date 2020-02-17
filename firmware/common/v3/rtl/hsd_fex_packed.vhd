@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-02-07
+-- Last update: 2020-02-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -364,6 +364,10 @@ begin
       v.iopened := r.iopened+1;
       v.cache(i).state  := CLOSED_S;
       v.cache(i).eaddr  := encodeAddr( v.wraddr, k+imatch );
+      v.cache(i).drows  := conv_integer(v.cache(i).eaddr(CACHE_ADDR_LEN_C-1 downto IDX_BITS)-
+                                        r.cache(i).baddr(CACHE_ADDR_LEN_C-1 downto IDX_BITS));
+      v.cache(i).didxs  := conv_integer(v.cache(i).eaddr(IDX_BITS-1 downto 0)) -
+                           conv_integer(r.cache(i).baddr(IDX_BITS-1 downto 0));
       -- correct for stream header buffering first 16 bytes
 --      v.cache(i).eaddr  := v.cache(i).eaddr + toSlv(8/ILV_G,CACHE_ADDR_LEN_C);
     end if;
@@ -452,22 +456,12 @@ begin
               --
               q.rdaddr := r.cache(i).baddr(q.rdaddr'left+IDX_BITS downto IDX_BITS);
               --
-              --  Form header word
+              --  Form stream header word
               --
               q.first := '1';
               q.axisMaster.tValid := '1';
               q.axisMaster.tData(30 downto 0) :=
---              toSlv(ILV_G*conv_integer(r.cache(i).eaddr-r.cache(i).baddr),31);
-                --toSlv(ILV_G*
-                --      ((ROW_SIZE*conv_integer(r.cache(i).eaddr(CACHE_ADDR_LEN_C-1 downto IDX_BITS))+
-                --        conv_integer(r.cache(i).eaddr(IDX_BITS-1 downto 0))) -
-                --       (ROW_SIZE*conv_integer(r.cache(i).baddr(CACHE_ADDR_LEN_C-1 downto IDX_BITS))+
-                --        conv_integer(r.cache(i).baddr(IDX_BITS-1 downto 0)))),31);
-                toSlv(ILV_G*
-                      (ROW_SIZE*conv_integer(r.cache(i).eaddr(CACHE_ADDR_LEN_C-1 downto IDX_BITS)-
-                                             r.cache(i).baddr(CACHE_ADDR_LEN_C-1 downto IDX_BITS)) +
-                       conv_integer(r.cache(i).eaddr(IDX_BITS-1 downto 0)) -
-                       conv_integer(r.cache(i).baddr(IDX_BITS-1 downto 0))),31);
+                toSlv(ILV_G*(ROW_SIZE*r.cache(i).drows+r.cache(i).didxs),31);
               
               q.axisMaster.tData(31) := r.cache(i).ovflow;
               q.axisMaster.tData( 47 downto  32) := toSlv(0,16);         -- boff,eoff

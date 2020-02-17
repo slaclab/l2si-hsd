@@ -5,7 +5,7 @@
 -- Author     : Larry Ruckman  <ruckman@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-02-12
--- Last update: 2020-02-07
+-- Last update: 2020-02-14
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -54,7 +54,6 @@ entity AxiPcieQuadAdcCore is
       DMA_SIZE_G       : positive range 1 to 16 := 1;
       AXIS_CONFIG_G    : AxiStreamConfigArray;
       LCLSII_G         : boolean                := true;  -- obsolete
-      SIM_TIMING_G     : boolean                := false;
       SIM_PERIOD_G     : integer                := 13;
       BUILD_INFO_G     : BuildInfoType );
    port (
@@ -495,31 +494,6 @@ begin
    rxUsrClk       <= timingClk;
    rxUsrClkActive <= '1';
    
-   GEN_SIM : if SIM_TIMING_G generate
-     TIMING_SIM_BUFG_GT : BUFG_GT
-         port map ( I       => timingRefClk,
-                    CE      => '1',
-                    CEMASK  => '1',
-                    CLR     => '0',
-                    CLRMASK => '1',
-                    DIV     => "000",           -- Divide-by-1
-                    O       => timingSimClk );
-     U_Mini : entity l2si_core.XpmMiniSim
-       port map ( configI   => toSlv(SIM_PERIOD_G,20),
-                  txClk     => timingSimClk,
-                  txRst     => '0',
-                  txRdy     => '1',
-                  txData    => rxData,
-                  txDataK   => rxDataK );
-     rxUsrClk  <= timingSimClk;
-     rxStatus  <= TIMING_PHY_STATUS_INIT_C;
-     rxDispErr <= "00";
-     rxDecErr  <= "00";
-     txUsrClk  <= timingSimClk;
-     txStatus  <= TIMING_PHY_STATUS_INIT_C;
-   end generate;   
-
-   GEN_NOSIM : if not SIM_TIMING_G generate
      U_TimingGth : entity lcls_timing_core.TimingGtCoreWrapper
        generic map (
          EXTREF_G          => true,  -- because Si5338 can't generate 371MHz
@@ -558,7 +532,6 @@ begin
          txDataK         => timingFb.dataK,
          txOutClk        => txUsrClk,
          loopback        => loopback);
-    end generate;
      
     TimingCore_1 : entity lcls_timing_core.TimingCore
       generic map (

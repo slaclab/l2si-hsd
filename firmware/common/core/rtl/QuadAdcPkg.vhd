@@ -140,6 +140,8 @@ package QuadAdcPkg is
     eoffs  : slv(IDX_BITS-1 downto 0);
     baddr  : slv(CACHE_ADDR_LEN_C-1 downto 0);
     eaddr  : slv(CACHE_ADDR_LEN_C-1 downto 0);
+    drows  : integer range 0 to RAM_DEPTH_C-1;
+    didxs  : integer range 1-ROW_SIZE to ROW_SIZE-1;
     skip   : sl;
     ovflow : sl;
   end record;
@@ -151,6 +153,8 @@ package QuadAdcPkg is
     eoffs  => (others=>'0'),
     baddr  => (others=>'0'),
     eaddr  => (others=>'0'),
+    drows  => 0,
+    didxs  => 0,
     skip   => '0',
     ovflow => '0' );
   
@@ -421,7 +425,7 @@ package body QuadAdcPkg is
   
   function toCacheType (vector : slv) return CacheType
   is
-    variable status : CacheType;
+    variable status : CacheType := CACHE_INIT_C;
     variable i       : integer := vector'low;
     variable vstate : slv(3 downto 0) := (others=>'0');
     variable vtrigd : slv(3 downto 0) := (others=>'0');
