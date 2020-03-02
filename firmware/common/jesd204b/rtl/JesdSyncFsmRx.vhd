@@ -29,7 +29,8 @@ use work.Jesd204bPkg.all;
 
 entity JesdSyncFsmRx is
    generic (
-      TPD_G: time    := 1 ns;
+       TPD_G: time    := 1 ns;
+       DEBUG_G : boolean := true;
 
       -- Number of bytes in a frame
       F_G : positive := 2;
@@ -159,15 +160,39 @@ architecture rtl of JesdSyncFsmRx is
    signal s_kDetected : sl;
    signal s_kStable   : sl;
 
+   signal debug : slv(2 downto 0);
+   
+   component ila_0
+     port ( clk    : in sl;
+            probe0 : in slv(255 downto 0) );
+   end component;
+
 begin
 
-  debug_o(2 downto 0) <= "000" when r.state = IDLE_S   else
-                         "001" when r.state = SYSREF_S else
-                         "010" when r.state = SYNC_S   else
-                         "011" when r.state = HOLD_S   else
-                         "100" when r.state = ALIGN_S  else
-                         "101" when r.state = ILA_S    else
-                         "110";
+  GEN_DEBUG : if DEBUG_G generate
+    U_ILA : ila_0
+      port map ( clk => clk,
+                 probe0(0) => rst,
+                 probe0(3 downto 1) => debug,
+                 probe0(4) => s_kDetected,
+                 probe0(5) => s_kStable,
+                 probe0(6) => gtReady_i,
+                 probe0(7) => nSyncAnyD1_i,
+                 probe0(8) => enable_i,
+                 probe0(9) => sysRef_i,
+                 probe0(10) => subClass_i,
+                 probe0(11) => lmfc_i,
+                 probe0(255 downto 12) => (others=>'0') );
+  end generate;
+    
+  debug(2 downto 0) <= "000" when r.state = IDLE_S   else
+                       "001" when r.state = SYSREF_S else
+                       "010" when r.state = SYNC_S   else
+                       "011" when r.state = HOLD_S   else
+                       "100" when r.state = ALIGN_S  else
+                       "101" when r.state = ILA_S    else
+                       "110";
+  debug_o( 2 downto 0) <= debug;
   debug_o(10 downto 3) <= lmfc_i & subClass_i & sysRef_i & enable_i & nSyncAnyD1_i & gtReady_i & s_kStable & s_kDetected;
   
 

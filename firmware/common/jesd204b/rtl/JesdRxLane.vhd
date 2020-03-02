@@ -59,6 +59,7 @@ use work.Jesd204bPkg.all;
 entity JesdRxLane is
    generic (
       TPD_G : time     := 1 ns;
+      DEBUG_G : boolean := true;
       -- Number of bytes in a frame
       F_G   : positive := 2;
       -- Number of frames in a multi frame
@@ -202,6 +203,7 @@ begin
    syncFSM_INST : entity work.JesdSyncFsmRx
       generic map (
          TPD_G => TPD_G,
+         DEBUG_G => DEBUG_G,
          F_G   => F_G,
          K_G   => K_G)
       port map (

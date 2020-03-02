@@ -308,6 +308,7 @@ begin
       JesdRx_INST : entity work.JesdRxLane
          generic map (
             TPD_G => TPD_G,
+            DEBUG_G => false,
             F_G   => F_G,
             K_G   => K_G)
          port map (
