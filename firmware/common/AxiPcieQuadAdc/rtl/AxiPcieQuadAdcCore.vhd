@@ -5,7 +5,7 @@
 -- Author     : Larry Ruckman  <ruckman@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-02-12
--- Last update: 2020-02-14
+-- Last update: 2020-02-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -195,7 +195,7 @@ architecture mapping of AxiPcieQuadAdcCore is
 
    signal timingSimClk : sl;
      
-   constant DEBUG_C : boolean := false;
+   constant DEBUG_C : boolean := true;
 
    component ila_0
      port ( clk : in sl;
@@ -331,6 +331,7 @@ begin
          AXI_CLK_FREQ_G   => 125.0E+6,  -- units of Hz
          XIL_DEVICE_G     => "ULTRASCALE",
          DMA_SIZE_G       => DMA_SIZE_G,
+         EN_XVC_G         => true,
          BUILD_INFO_G     => BUILD_INFO_G )
       port map (
          -- AXI4 Interfaces
@@ -524,7 +525,7 @@ begin
          rxDispErr       => rxDispErr,
          rxDecErr        => rxDecErr,
          rxOutClk        => timingClk,
-         txControl       => timingFb.control,
+         txControl       => rxControl,
          txStatus        => txStatus,
          txUsrClk        => txUsrClk,
          txUsrClkActive  => '1',
@@ -538,7 +539,7 @@ begin
          TPD_G             => TPD_G,
          TPGEN_G           => false,
          ASYNC_G           => false,
-         CLKSEL_MODE_G     => ite(LCLSII_G,"LCLSII","LCLSI"),
+         CLKSEL_MODE_G     => "LCLSII",
 --         PROG_DELAY_G      => true,
          AXIL_BASE_ADDR_G  => TIM_ADDR_C,
 --         AXIL_RINGB        => true,
