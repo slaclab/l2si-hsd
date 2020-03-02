@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2020-02-07
+-- Last update: 2020-02-26
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -76,6 +76,7 @@ entity Pgp3Hsd is
      --
      obClk           : in  sl;
      txReset         : in  sl := '0';
+     txId            : in  slv(31 downto 0);
      obMaster        : in  AxiStreamMasterType;
      obSlave         : out AxiStreamSlaveType;
      --
@@ -109,10 +110,15 @@ architecture top_level_app of Pgp3Hsd is
   signal holdoffSofS    : sl;
   
   type RegType is record
-    tLast : sl;
+    tLast  : sl;
+    opCode : sl;
+    count  : slv(23 downto 0);
   end record;
 
-  constant REG_INIT_C : RegType := ( tLast => '1' );
+  constant REG_INIT_C : RegType := (
+    tLast  => '1',
+    opCode => '0',
+    count  => (others=>'0') );
 
   signal r   : RegType := REG_INIT_C;
   signal rin : RegType;
@@ -140,8 +146,15 @@ begin
   pgpTxIn.flowCntlDis <= '1';
   pgpTxIn.skpInterval <= X"0000FFF0";
   pgpTxIn.resetTx     <= txReset;
-
+  pgpTxIn.opCodeNumber<= toSlv(6,3);
+  pgpTxIn.opCodeEn    <= r.opCode;
   pgpRxIn.resetRx     <= rxReset;
+
+  U_SyncId : entity surf.SynchronizerVector
+    generic map ( WIDTH_G => 32 )
+    port map ( clk       => pgpClk,
+               dataIn    => txId,
+               dataOut   => pgpTxIn.opCodeData(47 downto 16) );
   
   U_TxFifo : entity surf.AxiStreamFifoV2
     generic map (
@@ -229,7 +242,9 @@ begin
     variable v : RegType;
   begin
     v := r;
-
+    v.opCode := '0';
+    v.count  := r.count+1;
+    
     pgpTxMasters(0) <= pgpObMaster;
 
     --
@@ -257,7 +272,11 @@ begin
         pgpObSlave.tReady        <= '0';
       end if;
     end if;
-      
+
+    if r.count = 0 then
+      v.opCode := '1';
+    end if;
+    
     if pgpRst = '1' then
       v := REG_INIT_C;
     end if;
