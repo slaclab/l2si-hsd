@@ -253,6 +253,7 @@ architecture rtl of hsd_6400m is
     pgpTxRst  : sl;
     pgpRxRst  : sl;
     pgpHoldoffSof : sl;
+    txId      : slv(15 downto 0);
   end record;
   constant REG_INIT_C : RegType := (
     axilWriteSlave => AXI_LITE_WRITE_SLAVE_INIT_C,
@@ -265,7 +266,8 @@ architecture rtl of hsd_6400m is
     qpllrst   => '0',
     pgpTxRst  => '0',
     pgpRxRst  => '0',
-    pgpHoldoffSof  => '0' );
+    pgpHoldoffSof  => '0',
+    txId      => (others=>'0') );
 
   signal r    : RegType := REG_INIT_C;
   signal r_in : RegType;
@@ -313,10 +315,6 @@ architecture rtl of hsd_6400m is
   signal sysref_edge        : sl;
   signal syncb              : slv(1 downto 0);
   signal trigSlot           : slv(1 downto 0);
-  signal trigO              : slv(1 downto 0);
-  signal trigI              : slv(2*ROW_SIZE-1 downto 0);
-  signal trigger            : sl;
-  signal trigger_out        : sl;
   signal adcValid           : slv(1 downto 0);
   
   signal rx_clk             : sl;
@@ -358,6 +356,7 @@ architecture rtl of hsd_6400m is
 
   signal phaseValue           : Slv16Array(1 downto 0);
   signal phaseCount           : Slv16Array(1 downto 0);
+  signal pgpTxId              : Slv32Array(7 downto 0);
   
   constant READOUT_AXIS_CONFIG_C : AxiStreamConfigType := ssiAxiStreamConfig(32);
 
@@ -818,26 +817,13 @@ begin  -- rtl
       adcValid            => adcValid,
       fmcClk              => fmcClk, -- phase detector input
       --
-      trigSlot            => trigSlot,
-      trigOut             => trigO,
-      trigIn              => trigI );
+      trigSlot            => trigSlot );
 
   adcValid(0)                <= surfAdcValid(0) and surfAdcValid(4);
   adcValid(1)                <= surfAdcValid(8) and surfAdcValid(12);
   sync_to_lmk                <= uOr(trigSlot);
   fmcClk                     <= (others=>rx_clk);
 
-  --  This is a hack to get the trigger into the data stream
-  --  If the acquisition clock is locked to the timing clock, then
-  --    it doesn't matter how
-  GEN_TRIG : for i in 0 to 1 generate
-    trigI((i+1)*ROW_SIZE-1 downto i*ROW_SIZE+1) <= (others=>'0');
-    U_TRIGI : entity surf.SynchronizerOneShot
-      port map ( clk     => rx_clk,
-                 dataIn  => trigO(i),
-                 dataOut => trigI(i*ROW_SIZE) );
-  end generate;
-    
 --------------------
 -- PGP3 Data Pipe --
 --------------------
@@ -946,6 +932,7 @@ begin  -- rtl
   GEN_PGP : for i in 0 to 7 generate
     qpllrsti(i)(1) <= '0';
     qpllrsti(i)(0) <= qpllrst(i)(0) or r.qpllrst;
+    pgpTxId (i)(31 downto 0) <= x"fc" & toSlv(i,8) & r.txId;
     U_Pgp : entity work.Pgp3Hsd
       generic map ( ID_G             => toSlv(3*16+i,8),
                     AXIL_BASE_ADDR_G => PGP_AXI_CROSSBAR_MASTERS_CONFIG_C(i).baseAddr,
@@ -981,6 +968,7 @@ begin  -- rtl
                  obMaster        => mDmaMaster(i),
                  obSlave         => mDmaSlave (i),
                  txReset         => r.pgpTxRst,
+                 txId            => pgpTxId   (i),
                  --
                  ibClk           => dmaClk );
   end generate;
@@ -1080,7 +1068,9 @@ begin  -- rtl
       axiSlaveRegisterR( ep, toSlv(8*i+76,12), 0, phaseCount(i));
       axiSlaveRegisterR( ep, toSlv(8*i+80,12), 0, phaseValue(i));
     end loop;
-      
+
+    axiSlaveRegister ( ep, toSlv(92,12), 0, v.txId);
+    
     axiSlaveDefault( ep, v.axilWriteSlave, v.axilReadSlave );
 
     if regRst='1' then
@@ -1109,7 +1099,6 @@ begin  -- rtl
   -------------------------------------------------------------------------------------
 -- Connect Port Signals
 -------------------------------------------------------------------------------------
-  trigger_out   <= (trigger and hw_trigger_en) or (sw_trigger and sw_trigger_en);
 
   adc_syncse_n <= syncb;
 

@@ -17,8 +17,9 @@ target: prom
 # PRJ_VERSION = 00000007  Fix errors when no payload or no unprescaled streams
 # PRJ_VERSION = 00000008  Explore flash controller errors
 # PRJ_VERSION = 00000009  Use common TriggerEventManager
+# PRJ_VERSION = 0000000A  Simplify trigger/shift logic
 #
-export PRJ_VERSION = 00000009
+export PRJ_VERSION = 0000000A
 
 # Define target part
 export PRJ_PART = XCKU085-FLVB1760-2-E
