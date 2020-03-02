@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-02-07
+-- Last update: 2020-03-01
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -50,7 +50,8 @@ use work.QuadAdcPkg.all;
 entity ChipAdcCore is
   generic (
     DMA_STREAM_CONFIG_G : AxiStreamConfigType;
-    BASE_ADDR_C : slv(31 downto 0) := (others=>'0') );
+    BASE_ADDR_C : slv(31 downto 0) := (others=>'0');
+    DEBUG_G     : boolean := false );
   port (
     -- AXI-Lite and IRQ Interface
     axiClk              : in  sl;
@@ -61,6 +62,8 @@ entity ChipAdcCore is
     axilReadSlave       : out AxiLiteReadSlaveType;
     --
     triggerClk          : in  sl;
+    triggerRst          : in  sl;
+    triggerBus          : in  TimingBusType;
     triggerData         : in  TriggerEventDataType;
     -- DMA
     dmaClk              : in  sl;
@@ -78,9 +81,7 @@ entity ChipAdcCore is
     adcRst              : in  sl;
     adc                 : in  AdcDataArray(3 downto 0);
     adcValid            : in  sl;
-    fmcClk              : in  sl;
-    --
-    trigIn              : in  slv(ROW_SIZE-1 downto 0) );
+    fmcClk              : in  sl );
 end ChipAdcCore;
 
 architecture mapping of ChipAdcCore is
@@ -118,8 +119,11 @@ architecture mapping of ChipAdcCore is
   signal axilReadMasters   : AxiLiteReadMasterArray (NUM_AXI_MASTERS_C-1 downto 0);
   signal axilReadSlaves    : AxiLiteReadSlaveArray  (NUM_AXI_MASTERS_C-1 downto 0);
 
-  signal eventAxisSlaveTmp : AxiStreamSlaveType;
-  
+  signal eventAxisSlaveTmp  : AxiStreamSlaveType;
+  signal eventAxisSlaveSync : AxiStreamSlaveType; -- synced to evrClk
+  signal eventTrig          : sl;
+  signal eventTrigSync      : sl;
+
 begin  
 
   dmaRst             <= dmaRstS;
@@ -150,7 +154,8 @@ begin
   U_EventDma : entity work.ChipAdcEvent
     generic map ( FIFO_ADDR_WIDTH_C   => FIFO_ADDR_WIDTH_C,
                   DMA_STREAM_CONFIG_G => DMA_STREAM_CONFIG_G,
-                  BASE_ADDR_C         => AXI_CROSSBAR_MASTERS_CONFIG_C(1).baseAddr )
+                  BASE_ADDR_C         => AXI_CROSSBAR_MASTERS_CONFIG_C(1).baseAddr,
+                  DEBUG_G             => DEBUG_G )
     port map (    axilClk         => axiClk,
                   axilRst         => axiRst,
                   axilReadMaster  => axilReadMasters (1),
@@ -163,9 +168,9 @@ begin
                   configA    => configA,
                   adc        => adc,
                   adcValid   => adcValid,
-                  trigIn     => trigIn,
                   --
                   triggerClk    => triggerClk,
+                  triggerRst    => triggerRst,
                   triggerData   => triggerData,
                   --
                   dmaClk          => dmaClk,
@@ -173,6 +178,7 @@ begin
                   eventAxisMaster => eventAxisMaster,
                   eventAxisSlave  => eventAxisSlaveTmp,
                   eventAxisCtrl   => eventAxisCtrl,
+                  eventTrig       => eventTrig,
                   --
                   dmaFullS   => dmaFull,
                   dmaFullCnt => dmaFullCnt,
@@ -181,13 +187,23 @@ begin
                   status     => status.eventCache,
                   debug      => debug );
 
+  Sync_ReadCnt  : entity surf.Synchronizer
+    port map ( clk     => triggerClk,
+               dataIn  => eventAxisSlaveTmp.tReady,
+               dataOut => eventAxisSlaveSync.tReady );
+  
+  Sync_TrigCnt  : entity surf.Synchronizer
+    port map ( clk     => triggerClk,
+               dataIn  => eventTrig,
+               dataOut => eventTrigSync );
+  
   Sync_EvtCount : entity surf.SyncStatusVector
     generic map ( WIDTH_G => 5 )
     port map    ( statusIn(4)  => '0',
-                  statusIn(3)  => '0',
-                  statusIn(2)  => eventAxisSlaveTmp.tReady,
-                  statusIn(1)  => triggerData.valid,
-                  statusIn(0)  => eventSel,
+                  statusIn(3)  => eventTrigSync,
+                  statusIn(2)  => eventAxisSlaveSync.tReady,
+                  statusIn(1)  => eventSel,
+                  statusIn(0)  => triggerBus.strobe,
                   cntRstIn     => rstCount,
                   rollOverEnIn => (others=>'1'),
                   cntOut       => status.eventCount,
@@ -239,7 +255,7 @@ begin
   --
   Sync_dmaStrobe : entity surf.SynchronizerOneShot
     port map ( clk     => dmaClk,
-               dataIn  => triggerData.valid,
+               dataIn  => triggerBus.strobe,
                dataOut => dmaStrobe );
 
   Sync_dmaRst : process (dmaClk) is

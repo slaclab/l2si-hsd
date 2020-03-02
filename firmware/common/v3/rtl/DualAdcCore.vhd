@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-02-07
+-- Last update: 2020-03-01
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -81,9 +81,7 @@ entity DualAdcCore is
     adcValid            : in  slv(1 downto 0);
     fmcClk              : in  slv(1 downto 0);
     --
-    trigSlot            : out slv(1 downto 0);
-    trigOut             : out slv(1 downto 0);
-    trigIn              : in  slv(2*ROW_SIZE-1 downto 0) );
+    trigSlot            : out slv(1 downto 0) );
 end DualAdcCore;
 
 architecture mapping of DualAdcCore is
@@ -175,12 +173,11 @@ begin
   GEN_FMC : for i in 0 to NFMC_C-1 generate
 
     trigSlot(i) <= triggerData(i).valid;
-    trigOut (i) <= triggerData(i).valid and
-                   triggerData(i).l0Accept;
     
     U_ChipAdcCore : entity work.ChipAdcCore
       generic map ( DMA_STREAM_CONFIG_G => DMA_STREAM_CONFIG_G,
-                    BASE_ADDR_C         => AXI_CROSSBAR_MASTERS_CONFIG_C(i).baseAddr )
+                    BASE_ADDR_C         => AXI_CROSSBAR_MASTERS_CONFIG_C(i).baseAddr,
+                    DEBUG_G             => (i=0) )
       port map ( axiClk              => axiClk,
                  axiRst              => axiRst,
                  axilWriteMaster     => mAxilWriteMasters(i),
@@ -189,6 +186,8 @@ begin
                  axilReadSlave       => mAxilReadSlaves  (i),
                  --
                  triggerClk          => evrClk,
+                 triggerRst          => evrRst,
+                 triggerBus          => evrBus,
                  triggerData         => triggerData  (i),
                  -- DMA
                  dmaClk              => dmaClk,
@@ -206,9 +205,7 @@ begin
                  adcRst              => adcRst,
                  adc                 => adc          (4*i+3 downto 4*i),
                  adcValid            => adcValid     (i),
-                 fmcClk              => fmcClk       (i),
-                 --
-                 trigIn              => trigIn       ((i+1)*ROW_SIZE-1 downto i*ROW_SIZE) );
+                 fmcClk              => fmcClk       (i) );
   end generate;
   
 end mapping;

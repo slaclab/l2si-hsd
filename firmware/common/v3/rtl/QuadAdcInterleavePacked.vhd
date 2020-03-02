@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-02-07
+-- Last update: 2020-02-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -242,9 +242,7 @@ begin  -- mapping
                  probe0( 7 downto  4) => r_fexb,
                  probe0(11 downto  8) => r_fexn,
                  probe0(43 downto 12) => r.axisMaster.tData(31 downto 0),
-                 probe0(47 downto 44) => r.npend,
-                 probe0(51 downto 48) => r.ntrig,
-                 probe0(55 downto 52) => r.nread,
+                 probe0(55 downto 44) => (others=>'0'),
                  probe0(57 downto 56) => r.ropend(0).streams,
                  probe0(59 downto 58) => r.ropend(1).streams,
                  probe0(61 downto 60) => r.ropend(2).streams,
@@ -264,7 +262,14 @@ begin  -- mapping
                  probe0(88)           => start,
                  probe0(89)           => l1in,
                  probe0(90)           => l1ina,
-                 probe0(255 downto 91) => (others=>'0') );
+                 probe0( 95 downto  91) => r.npend,
+                 probe0(100 downto  96) => r.ntrig,
+                 probe0(105 downto 101) => r.nread,
+                 probe0(121 downto 106) => free(0),
+                 probe0(126 downto 122) => nfree(0),
+                 probe0(142 downto 127) => free(1),
+                 probe0(147 downto 143) => nfree(1),
+                 probe0(255 downto 148) => (others=>'0') );
   end generate;
     
   status  <= cacheStatus(0);
@@ -350,7 +355,7 @@ begin  -- mapping
       generic map ( ALG_ID_G      => i,
                     ALGORITHM_G   => ALGORITHM_G(i),
                     AXIS_CONFIG_G => work.AxiStreamPkg.toAxiStreamConfig(SAXIS_CONFIG_C),
-                    DEBUG_G       => DEBUG_G )
+                    DEBUG_G       => ite(i=0,DEBUG_G,false) )
       port map ( clk               => clk,
                  rst               => rst,
                  clear             => clear,
@@ -461,14 +466,15 @@ begin  -- mapping
     axiSlaveRegister ( ep, x"00", 0, v.fexEnable );
     axiSlaveRegister ( ep, x"00", 4, v.aaFullN );
     axiSlaveRegisterR( ep, x"04", 0, muxSlVectorArray(cntOflow,NSTREAMS_C) );
-    --axiSlaveRegisterR( ep, x"08", 0, r.fexb );
-    --axiSlaveRegisterR( ep, x"08", 4, toSlv(r.fexn,4) );
-    --for i in 0 to NSTREAMS_C-1 loop
-    --  axiSlaveRegisterR( ep, x"08", 8+i, axisMasters(i).tValid );
-    --end loop;
-    --axiSlaveRegisterR( ep, x"08",12, maxisSlave.tReady );
-    --axiSlaveRegisterR( ep, x"08",13, r.axisMaster.tValid );
---    axiSlaveRegisterR( ep, x"08",16, rdaddr(r.fexn) );
+
+    axiSlaveRegisterR( ep, x"08", 0, r.fexb );
+    axiSlaveRegisterR( ep, x"08", 4, toSlv(r.fexn,4) );
+    for i in 0 to NSTREAMS_C-1 loop
+      axiSlaveRegisterR( ep, x"08", 8+i, axisMasters(i).tValid );
+    end loop;
+    axiSlaveRegisterR( ep, x"08",12, maxisSlave.tReady );
+    axiSlaveRegisterR( ep, x"08",13, r.axisMaster.tValid );
+    axiSlaveRegisterR( ep, x"08",16, rdaddr(r.fexn) );
 --    axiSlaveRegisterR( ep, x"0C", 0, r.free  );
     
     for i in 0 to NSTREAMS_C-1 loop

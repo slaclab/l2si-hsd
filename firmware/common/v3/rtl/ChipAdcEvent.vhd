@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-02-07
+-- Last update: 2020-03-01
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -46,9 +46,10 @@ use work.FmcPkg.all;
 
 entity ChipAdcEvent is
   generic (
-    FIFO_ADDR_WIDTH_C : integer := 10;
+    FIFO_ADDR_WIDTH_C   : integer := 10;
     DMA_STREAM_CONFIG_G : AxiStreamConfigType;
-    BASE_ADDR_C       : slv(31 downto 0) := (others=>'0') );
+    BASE_ADDR_C         : slv(31 downto 0) := (others=>'0');
+    DEBUG_G             : boolean := false );
   port (
     axilClk         :  in sl;
     axilRst         :  in sl;
@@ -60,11 +61,11 @@ entity ChipAdcEvent is
     adcClk          :  in sl;
     adcRst          :  in sl;
     configA         :  in QuadAdcConfigType;
-    trigIn          :  in slv         (ROW_SIZE-1 downto 0);
     adc             :  in AdcDataArray(3 downto 0);
     adcValid        :  in sl; 
     --
     triggerClk      :  in sl;
+    triggerRst      :  in sl;
     triggerData     :  in TriggerEventDataType;
     --
     dmaClk          :  in sl;
@@ -72,6 +73,7 @@ entity ChipAdcEvent is
     eventAxisMaster :  in AxiStreamMasterType;
     eventAxisSlave  : out AxiStreamSlaveType;
     eventAxisCtrl   : out AxiStreamCtrlType;   --
+    eventTrig       : out sl;
 --    dmaFullThr    :  in slv(FIFO_ADDR_WIDTH_C-1 downto 0);
     dmaFullS        : out sl;
     dmaFullCnt      : out slv(31 downto 0);
@@ -129,9 +131,6 @@ architecture mapping of ChipAdcEvent is
   signal pllSyncV  : sl;
   signal eventHdr  : slv(255 downto 0);
 
-  signal l1inacc, sl1inacc : sl;
-  signal l1inrej, sl1inrej : sl;
-  signal sl1in, sl1ina : sl;
   signal noPayload : sl;
  
   constant APPLY_SHIFT_C : boolean := false;
@@ -149,27 +148,7 @@ begin  -- mapping
   status     <= cacheStatus;
   dmaFullS   <= afull;
   dmaFullCnt <= afullCnt;
-
-  process ( triggerClk ) is
-  begin
-    if rising_edge(triggerClk) then
-      l1inacc <= triggerData.valid and triggerData.l1Expect and     triggerData.l1Accept;
-      l1inrej <= triggerData.valid and triggerData.l1Expect and not triggerData.l1Accept;
-    end if;
-  end process;
-
-  U_L1INACC : entity surf.SynchronizerOneShot
-    port map ( clk     => dmaClk,
-               dataIn  => l1inacc,
-               dataOut => sl1inacc );
-
-  U_L1INREJ : entity surf.SynchronizerOneShot
-    port map ( clk      => dmaClk,
-               dataIn   => l1inrej,
-               dataOut  => sl1inrej );
-
-  sl1in  <= sl1inacc or sl1inrej;
-  sl1ina <= sl1inacc;
+  eventTrig  <= start;
   
 --      This is the large buffer.
   GEN_RAM : for j in 0 to NSTREAMS_C-1 generate
@@ -225,7 +204,7 @@ begin  -- mapping
     generic map ( BASE_ADDR_C    => BASE_ADDR_C,
                   AXIS_CONFIG_G  => CHN_AXIS_CONFIG_C,
                   ALGORITHM_G    => FEX_ALGORITHMS,
-                  DEBUG_G        => false )
+                  DEBUG_G        => DEBUG_G )
     port map ( clk             => dmaClk,
                rst             => dmaRst,
                clear           => clear,
@@ -257,7 +236,7 @@ begin  -- mapping
   U_DATA : entity work.QuadAdcChannelData
     generic map ( SAXIS_CONFIG_G => CHN_AXIS_CONFIG_C,
                   MAXIS_CONFIG_G => DMA_STREAM_CONFIG_G,
-                  DEBUG_G        => false )
+                  DEBUG_G        => DEBUG_G )
     port map ( dmaClk      => dmaClk,
                dmaRst      => dmaRst,
                --
@@ -271,23 +250,22 @@ begin  -- mapping
                dmaMaster   => dmaMaster,
                dmaSlave    => dmaSlave  );
 
-  U_Trigger : entity work.QuadAdcTrigger
+  U_Trigger : entity work.DualAdcTrigger
     generic map ( NCHAN_C => 1 )
-    port map ( clk       => dmaClk,
-               rst       => dmaRst,
-               trigIn    => trigIn,  
-               afullIn(0)=> ilvafull,
-               enable (0)=> configA.acqEnable,
-               l1in      => sl1in,
-               l1ina     => sl1ina,
+    port map ( triggerClk  => triggerClk,
+               triggerRst  => triggerRst,
+               triggerData => triggerData,
                --
-               afullOut  => afull,
-               afullCnt  => afullCnt,
-               ql1in     => ql1in,
-               ql1ina    => ql1ina,
-               shift     => shiftTmp,
-               clear     => clear,
-               start     => start );
+               clk         => dmaClk,
+               rst         => dmaRst,
+               afullIn(0)  => ilvafull,
+               enable (0)  => configA.acqEnable,
+               afullOut    => afull,
+               afullCnt    => afullCnt,
+               ql1in       => ql1in,
+               ql1ina      => ql1ina,
+               clear       => clear,
+               start       => start );
 
   shift <= adcValid & shiftTmp(30 downto 0);
 
