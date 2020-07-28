@@ -34,6 +34,7 @@ use surf.StdRtlPkg.all;
 
 library l2si_core;
 use l2si_core.L2SiPkg.all;
+use l2si_core.XpmExtensionPkg.all;
 
 use work.FmcPkg.all;
 
@@ -95,34 +96,7 @@ begin
   l0tag     <= triggerDataSync.l0Tag;
   l1tag     <= triggerDataSync.l1Tag;
   
-  --
-  --  Must do the logical operations before crossing clock domains
-  --
-  t_comb : process ( triggerRst, t, triggerData ) is
-    variable v : TrigRegType;
-  begin
-    v := t;
-    v.l0inacc := triggerData.valid and triggerData.l0Accept;
-    v.l1inacc := triggerData.valid and triggerData.l1Expect and     triggerData.l1Accept;
-    v.l1inrej := triggerData.valid and triggerData.l1Expect and not triggerData.l1Accept;
-    if triggerRst = '1' then
-      v := TRIG_REG_INIT_C;
-    end if;
-    tin <= v;
-  end process t_comb;
-
-  t_seq : process ( triggerClk ) is
-  begin
-    if rising_edge(triggerClk) then
-      t <= tin;
-    end if;
-  end process t_seq;
-
-  --
-  --  Its possible for these to cross on different clks
-  --  Add the tagID, too
-  --
-  triggerDataSlv <= toSlv(triggerData);
+  triggerDataSlv  <= toSlv(triggerData);
   triggerDataSync <= toXpmEventDataType(triggerDataSlvSync);
   
   U_L0L1 : entity surf.SynchronizerFifo

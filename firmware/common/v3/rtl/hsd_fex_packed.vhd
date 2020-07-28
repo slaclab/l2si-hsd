@@ -296,7 +296,7 @@ begin
                syncRst  => configSync );
   
   comb : process( r, clear, lopen, lskip, lclose, lopen_phase, lclose_phase,
-                  l1in, l1ina,
+                  l1in, l1ina, l0tag, l1tag,
                   tout, dout, douten, rddata, maxisSlave ) is
     variable v : RegType;
 --    variable n : integer range 0 to 2*ROW_SIZE-1;
