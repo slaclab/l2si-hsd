@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-02-12
+-- Last update: 2020-07-28
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -65,12 +65,15 @@ entity hsd_fex_packed is
     lopen           :  in sl;                      -- begin sampling
     lopen_phase     :  in slv(ROW_IDXB-1 downto 0);-- lopen location within the row
     lclose          :  in sl;                      -- end sampling
-    lclose_phase    :  in slv(ROW_IDXB-1 downto 0);-- lopen location within the row
+    lclose_phase    :  in slv(ROW_IDXB-1 downto 0);-- lclose location within the row
+    l0tag           :  in slv(4 downto 0) := (others=>'0');
     l1in            :  in sl;                      -- once per lopen
     l1ina           :  in sl;                      -- accept/reject
+    l1tag           :  in slv(4 downto 0) := (others=>'0');
     free            : out slv(15 downto 0);        -- unused rows in RAM
     nfree           : out slv( 4 downto 0);        -- unused gates
     status          : out CacheArray(MAX_OVL_C-1 downto 0);
+    writeaddr       : out slv(15 downto 0);
     readaddr        : out slv(15 downto 0);
     -- readout interface
     axisMaster      : out surf.AxiStreamPkg.AxiStreamMasterType;
@@ -199,6 +202,12 @@ architecture mapping of hsd_fex_packed is
     end if;
     return result;
   end encodeAddr;
+
+  procedure resetCache( cache : inout CacheType ) is
+  begin
+    cache.state := EMPTY_S;
+    cache.trigd := WAIT_T;
+  end procedure;
   
 begin
 
@@ -264,6 +273,7 @@ begin
   axisMaster <= work.AxiStreamPkg.toAxiStreamMaster(taxisMaster);
   status     <= r.cache;
   readaddr   <= resize(rdaddr,16);
+  writeaddr  <= resize(r.wraddr,16);
 
   GEN_CHAN : for j in 0 to 3 generate
     bramWriteMaster(j).en   <= '1';
@@ -389,6 +399,7 @@ begin
 --        v.cache(i).skip   := r.lskip;
 --        v.cache(i).mapd   := END_M; -- look for close
         v.cache(i).baddr  := encodeAddr( v.wraddr, k+imatch );
+        v.cache(i).tag    := l0tag;
         if r.cache(i).state /= EMPTY_S then
           v.cache(i).ovflow := '1';
         else
@@ -401,7 +412,7 @@ begin
     --
     if l1in = '1' then
       i := conv_integer(r.itrigger);
-      if l1ina = '1' then
+      if l1ina = '1' and l1tag = v.cache(i).tag then
         v.cache(i).trigd := ACCEPT_T;
       else
         v.cache(i).trigd := REJECT_T;
@@ -442,13 +453,13 @@ begin
         case r.cache(i).trigd is
           when WAIT_T   => null;
           when REJECT_T =>
-            v.cache(i) := CACHE_INIT_C;
+            resetCache(v.cache(i));
             q.ireading := q.ireading+1;
           when ACCEPT_T =>
             v.cache(i).state := READING_S;
             skip := r.cache(i).skip;
             if skip = '1' then 
-              v.cache(i) := CACHE_INIT_C;
+              resetCache(v.cache(i));
               q.ireading := q.ireading+1;
             else
               --
@@ -474,7 +485,7 @@ begin
               if r.cache(i).eaddr = r.cache(i).baddr then
                 --  Payload reduced to zero
                 q.axisMaster.tLast := '1';
-                v.cache(i) := CACHE_INIT_C;
+                resetCache(v.cache(i));
                 q.ireading := q.ireading+1;
               end if;
             end if;
@@ -497,12 +508,12 @@ begin
             end if;
           end loop;
           q.axisMaster.tLast := '1';
-          v.cache(i) := CACHE_INIT_C;
+          resetCache(v.cache(i));
           q.ireading := q.ireading+1;
         elsif ((q.rdaddr+1 = r.cache(i).eaddr(q.rdaddr'left+IDX_BITS downto IDX_BITS)) and
                r.cache(i).eaddr(IDX_BITS-1 downto 0)=0) then
           q.axisMaster.tLast := '1';
-          v.cache(i) := CACHE_INIT_C;
+          resetCache(v.cache(i));
           q.ireading := q.ireading+1;
         end if;
         q.axisMaster.tData(rddata'range) := rddata;

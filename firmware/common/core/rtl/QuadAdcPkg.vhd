@@ -35,7 +35,9 @@ use lcls_timing_core.TimingPkg.all;
 
 library l2si_core;
 use l2si_core.XpmPkg.all;
+
 use work.FmcPkg.all;
+use work.FexAlgPkg.all;
 
 package QuadAdcPkg is
   constant DMA_CHANNELS_C : natural := 5;  -- 4 ADC channels + 1 monitor channel
@@ -118,7 +120,7 @@ package QuadAdcPkg is
   constant RAM_ADDR_WIDTH_C : integer := bitSize(RAM_DEPTH_C-1);
   constant CACHE_ADDR_LEN_C : integer := RAM_ADDR_WIDTH_C+IDX_BITS;
   constant SKIP_CHAR : slv(1 downto 0) := "10";
-  constant CACHETYPE_LEN_C : integer := 26 + 2*IDX_BITS+2*CACHE_ADDR_LEN_C;
+  constant CACHETYPE_LEN_C : integer := 31 + 2*IDX_BITS+2*CACHE_ADDR_LEN_C;
   
   type CacheStateType is ( EMPTY_S,  -- buffer empty
                            OPEN_S,   -- buffer filling
@@ -140,6 +142,7 @@ package QuadAdcPkg is
     eoffs  : slv(IDX_BITS-1 downto 0);
     baddr  : slv(CACHE_ADDR_LEN_C-1 downto 0);
     eaddr  : slv(CACHE_ADDR_LEN_C-1 downto 0);
+    tag    : slv(4 downto 0);
     drows  : integer range 0 to RAM_DEPTH_C-1;
     didxs  : integer range 1-ROW_SIZE to ROW_SIZE-1;
     skip   : sl;
@@ -153,6 +156,7 @@ package QuadAdcPkg is
     eoffs  => (others=>'0'),
     baddr  => (others=>'0'),
     eaddr  => (others=>'0'),
+    tag    => (others=>'0'),
     drows  => 0,
     didxs  => 0,
     skip   => '0',
@@ -163,21 +167,22 @@ package QuadAdcPkg is
 
   function cacheToSlv  (status : CacheType) return slv;
   function toCacheType (vector : slv)      return CacheType;
+
+  constant BUILD_STATUS_LEN_C : integer := 10;
+  type BuildStatusType is record
+    state   : slv(2 downto 0);
+    dumps   : slv(3 downto 0);
+    hdrv    : sl;
+    valid   : sl;
+    ready   : sl;
+  end record;
   
-  constant QADC_STATUS_TYPE_LEN_C : integer := XPM_PARTITION_ADDR_LENGTH_C+32*5+32*3+MAX_OVL_C*CACHETYPE_LEN_C+7+7+20+8+32+32*4;
+  constant QADC_STATUS_TYPE_LEN_C : integer := 32*5+32+MAX_STREAMS_C*MAX_OVL_C*CACHETYPE_LEN_C+BUILD_STATUS_LEN_C;
   type QuadAdcStatusType is record
-    partitionAddr : slv(XPM_PARTITION_ADDR_LENGTH_C-1 downto 0);
-    eventCount    : SlVectorArray(4 downto 0, 31 downto 0);
+    eventCount    : Slv32Array(4 downto 0);
     dmaCtrlCount  : slv(31 downto 0);
-    dmaFullQ      : slv(31 downto 0);
-    adcSyncReg    : slv(31 downto 0);
-    eventCache    : CacheArray(MAX_OVL_C-1 downto 0);
-    msgDelaySet   : slv(6 downto 0);
-    msgDelayGet   : slv(6 downto 0);
-    headerCntL0   : slv(19 downto 0);
-    headerCntOF   : slv( 7 downto 0);
-    upstreamId    : Slv32Array(0 downto 0);
-    dnstreamId    : Slv32Array(3 downto 0);
+    eventCache    : CacheStatusArray(MAX_STREAMS_C-1 downto 0);
+    build         : BuildStatusType;
   end record;
 
   constant QADC_CONFIG_TYPE_LEN_C : integer := CHANNELS_C+124;
@@ -335,29 +340,18 @@ package body QuadAdcPkg is
     variable vector : slv(QADC_STATUS_TYPE_LEN_C-1 downto 0) := (others => '0');
     variable i,j,low    : integer                               := 0;
   begin
-    assignSlv(i, vector, status.partitionAddr);
     for j in 4 downto 0 loop
-      for k in 31 downto 0 loop
-        assignSlv(i, vector, status.eventCount(j,k));
-      end loop;
+        assignSlv(i, vector, status.eventCount(j));
     end loop;
     assignSlv(i, vector, status.dmaCtrlCount);
-    assignSlv(i, vector, status.dmaFullQ);
-    assignSlv(i, vector, status.adcSyncReg);
-    assignSlv(i, vector, status.eventCache);
-    --for j in 0 to MAX_OVL_C-1 loop
-    --  low := i;
-    --  i   := i+CACHETYPE_LEN_C;
-    --  vector(i-1 downto low) := cacheToSlv(status.eventCache(j));
-    --end loop;
-    assignSlv(i, vector, status.msgDelaySet);
-    assignSlv(i, vector, status.msgDelayGet);
-    assignSlv(i, vector, status.headerCntL0);
-    assignSlv(i, vector, status.headerCntOF);
-    assignSlv(i, vector, status.upstreamId(0));
-    for j in 0 to 3 loop
-      assignSlv(i, vector, status.dnstreamId(j));
+    for j in 0 to MAX_STREAMS_C-1 loop
+      assignSlv(i, vector, status.eventCache(j));
     end loop;
+    assignSlv(i, vector, status.build.state);
+    assignSlv(i, vector, status.build.dumps);
+    assignSlv(i, vector, status.build.hdrv );
+    assignSlv(i, vector, status.build.valid);
+    assignSlv(i, vector, status.build.ready);
     return vector;
   end function;
   
@@ -366,29 +360,18 @@ package body QuadAdcPkg is
     variable status  : QuadAdcStatusType;
     variable i,j,low : integer := vector'low;
   begin
-    assignRecord(i, vector, status.partitionAddr);
     for j in 4 downto 0 loop
-      for k in 31 downto 0 loop
-        assignRecord(i, vector, status.eventCount(j,k));
-      end loop;
+      assignRecord(i, vector, status.eventCount(j));
     end loop;
     assignRecord(i, vector, status.dmaCtrlCount);
-    assignRecord(i, vector, status.dmaFullQ);
-    assignRecord(i, vector, status.adcSyncReg);
-    assignRecord(i, vector, status.eventCache);
-    --for j in 0 to MAX_OVL_C-1 loop
-    --  low := i;
-    --  i   := i+CACHETYPE_LEN_C;
-    --  status.eventCache(j) := toCacheType(vector(i-1 downto low));
-    --end loop;
-    assignRecord(i, vector, status.msgDelaySet);
-    assignRecord(i, vector, status.msgDelayGet);
-    assignRecord(i, vector, status.headerCntL0);
-    assignRecord(i, vector, status.headerCntOF);
-    assignRecord(i, vector, status.upstreamId(0));
-    for j in 0 to 3 loop
-      assignRecord(i, vector, status.dnstreamId(j));
+    for j in 0 to MAX_STREAMS_C-1 loop
+      assignRecord(i, vector, status.eventCache(j));
     end loop;
+    assignRecord(i, vector, status.build.state);
+    assignRecord(i, vector, status.build.dumps);
+    assignRecord(i, vector, status.build.hdrv );
+    assignRecord(i, vector, status.build.valid);
+    assignRecord(i, vector, status.build.ready);
     return status;
   end function;
   
@@ -418,6 +401,7 @@ package body QuadAdcPkg is
     assignSlv(i, vector, status.eoffs);
     assignSlv(i, vector, status.baddr);
     assignSlv(i, vector, status.eaddr);
+    assignSlv(i, vector, status.tag);
     assignSlv(i, vector, status.skip);
     assignSlv(i, vector, status.ovflow);
     return vector;
@@ -449,6 +433,7 @@ package body QuadAdcPkg is
     assignRecord(i, vector, status.eoffs);
     assignRecord(i, vector, status.baddr);
     assignRecord(i, vector, status.eaddr);
+    assignRecord(i, vector, status.tag);
     assignRecord(i, vector, status.skip);
     assignRecord(i, vector, status.ovflow);
     return status;

@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-02-11
+-- Last update: 2020-07-28
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -62,6 +62,8 @@ end ChipAdcReg;
 
 architecture mapping of ChipAdcReg is
 
+  constant AW : integer := 12;   -- axi lite address width
+  
   type RegType is record
     axilReadSlave  : AxiLiteReadSlaveType;
     axilWriteSlave : AxiLiteWriteSlaveType;
@@ -72,6 +74,7 @@ architecture mapping of ChipAdcReg is
     dmaRst         : sl;
     fbRst          : sl;
     fbPLLRst       : sl;
+    streamSel      : slv(1 downto 0);
     cacheSel       : slv(3 downto 0);
   end record;
   constant REG_INIT_C : RegType := (
@@ -84,11 +87,14 @@ architecture mapping of ChipAdcReg is
     dmaRst         => '0',
     fbRst          => '0',
     fbPLLRst       => '0',
+    streamSel      => (others=>'0'),
     cacheSel       => (others=>'0') );
   
   signal r   : RegType := REG_INIT_C;
   signal rin : RegType;
 
+  signal streamSel : slv(1 downto 0);
+  signal istream   : integer range 0 to MAX_STREAMS_C-1;
   signal cacheSel : slv(3 downto 0);
   signal icache   : integer range 0 to 15;
 
@@ -129,79 +135,44 @@ begin  -- mapping
   process (r,axilReadMaster,axilWriteMaster,axiRst,status,irqReq,cacheS,statusS) is
     variable v : RegType;
     variable sReg : slv(0 downto 0);
-    variable axilStatus : AxiLiteStatusType;
     variable cacheS_state : slv(3 downto 0);
     variable cacheS_trigd : slv(3 downto 0);
-    procedure axilSlaveRegisterR (addr : in slv; reg : in slv) is
-    begin
-      axiSlaveRegister(axilReadMaster, v.axilReadSlave, axilStatus, addr, 0, reg);
-    end procedure;
-    procedure axilSlaveRegisterR (addr : in slv; offset : in integer; reg : in slv) is
-    begin
-      axiSlaveRegister(axilReadMaster, v.axilReadSlave, axilStatus, addr, offset, reg);
-    end procedure;
-    procedure axilSlaveRegisterR (addr : in slv; offset : in integer; reg : in sl) is
-    begin
-      axiSlaveRegister(axilReadMaster, v.axilReadSlave, axilStatus, addr, offset, reg);
-    end procedure;
-    procedure axilSlaveRegisterR (addr : in slv; reg : in slv; ack : out sl) is
-    begin
-      if (axilStatus.readEnable = '1') then
-         if (std_match(axilReadMaster.araddr(addr'length-1 downto 0), addr)) then
-            v.axilReadSlave.rdata(reg'range) := reg;
-            axiSlaveReadResponse(v.axilReadSlave);
-            ack := '1';
-         end if;
-      end if;
-    end procedure;
-    procedure axilSlaveRegisterW (addr : in slv; offset : in integer; reg : inout slv) is
-    begin
-      axiSlaveRegister(axilWriteMaster, axilReadMaster, v.axilWriteSlave, v.axilReadSlave, axilStatus, addr, offset, reg);
-    end procedure;
-    procedure axilSlaveRegisterW (addr : in slv; offset : in integer; reg : inout sl) is
-    begin
-      axiSlaveRegister(axilWriteMaster, axilReadMaster, v.axilWriteSlave, v.axilReadSlave, axilStatus, addr, offset, reg);
-    end procedure;
-    procedure axilSlaveDefault (
-      axilResp : in slv(1 downto 0)) is
-    begin
-      axiSlaveDefault(axilWriteMaster, axilReadMaster, v.axilWriteSlave, v.axilReadSlave, axilStatus, axilResp);
-    end procedure;
+    variable axilEp : AxiLiteEndpointType;
   begin  -- process
     v  := r;
     v.adcSyncRst := '0';
     
     sReg(0) := irqReq;
-    axiSlaveWaitTxn(axilWriteMaster, axilReadMaster, v.axilWriteSlave, v.axilReadSlave, axilStatus);
+    axiSlaveWaitTxn(axilEp, axilWriteMaster, axilReadMaster, v.axilWriteSlave, v.axilReadSlave);
     v.axilReadSlave.rdata := (others=>'0');
     
-    axilSlaveRegisterW(toSlv( 0,12), 0, v.irqEnable);
-    axilSlaveRegisterR(toSlv( 4,12), sReg);
+    axiSlaveRegister (axilEp, toSlv( 0,AW), 0, v.irqEnable);
+    axiSlaveRegisterR(axilEp, toSlv( 4,AW), 0, sReg);
 
-    axilSlaveRegisterW(toSlv(16,12),  0, v.countReset);
-    axilSlaveRegisterW(toSlv(16,12),  2, v.config.dmaTest);
-    axilSlaveRegisterW(toSlv(16,12),  3, v.adcSyncRst);
-    axilSlaveRegisterW(toSlv(16,12),  4, v.dmaRst);
-    axilSlaveRegisterW(toSlv(16,12),  5, v.fbRst);
-    axilSlaveRegisterW(toSlv(16,12),  6, v.fbPLLRst);
-    axilSlaveRegisterW(toSlv(16,12),  8, v.config.trigShift);
-    axilSlaveRegisterW(toSlv(16,12), 31, v.config.acqEnable);
-    axilSlaveRegisterW(toSlv(20,12),  0, v.config.rateSel);
-    axilSlaveRegisterW(toSlv(20,12), 13, v.config.destSel);
-    axilSlaveRegisterW(toSlv(24,12),  0, v.config.enable);
-    axilSlaveRegisterW(toSlv(24,12),  8, v.config.intlv);
-    axilSlaveRegisterW(toSlv(24,12), 16, v.config.partition);
-    axilSlaveRegisterW(toSlv(24,12), 20, v.config.inhibit);
-    axilSlaveRegisterW(toSlv(28,12),  0, v.config.samples);
-    axilSlaveRegisterW(toSlv(32,12),  0, v.config.prescale);
-    axilSlaveRegisterW(toSlv(36,12),  0, v.config.offset);
+    axiSlaveRegister (axilEp, toSlv(16,AW),  0, v.countReset);
+    axiSlaveRegister (axilEp, toSlv(16,AW),  2, v.config.dmaTest);
+    axiSlaveRegister (axilEp, toSlv(16,AW),  3, v.adcSyncRst);
+    axiSlaveRegister (axilEp, toSlv(16,AW),  4, v.dmaRst);
+    axiSlaveRegister (axilEp, toSlv(16,AW),  5, v.fbRst);
+    axiSlaveRegister (axilEp, toSlv(16,AW),  6, v.fbPLLRst);
+    axiSlaveRegister (axilEp, toSlv(16,AW),  8, v.config.trigShift);
+    axiSlaveRegister (axilEp, toSlv(16,AW), 31, v.config.acqEnable);
+    axiSlaveRegister (axilEp, toSlv(20,AW),  0, v.config.rateSel);
+    axiSlaveRegister (axilEp, toSlv(20,AW), 13, v.config.destSel);
+    axiSlaveRegister (axilEp, toSlv(24,AW),  0, v.config.enable);
+    axiSlaveRegister (axilEp, toSlv(24,AW),  8, v.config.intlv);
+    axiSlaveRegister (axilEp, toSlv(24,AW), 16, v.config.partition);
+    axiSlaveRegister (axilEp, toSlv(24,AW), 20, v.config.inhibit);
+    axiSlaveRegister (axilEp, toSlv(28,AW),  0, v.config.samples);
+    axiSlaveRegister (axilEp, toSlv(32,AW),  0, v.config.prescale);
+    axiSlaveRegister (axilEp, toSlv(36,AW),  0, v.config.offset);
     
-    axilSlaveRegisterR(toSlv(40,12), muxSlVectorArray(status.eventCount, 0));
-    axilSlaveRegisterR(toSlv(44,12), muxSlVectorArray(status.eventCount, 1));
-    axilSlaveRegisterR(toSlv(48,12), status.dmaCtrlCount);
-    axilSlaveRegisterR(toSlv(52,12), muxSlVectorArray(status.eventCount, 2));
-    axilSlaveRegisterR(toSlv(56,12), muxSlVectorArray(status.eventCount, 3));
-    axilSlaveRegisterR(toSlv(60,12), muxSlVectorArray(status.eventCount, 4));
+    axiSlaveRegisterR(axilEp, toSlv(40,AW), 0, status.eventCount(0));
+    axiSlaveRegisterR(axilEp, toSlv(44,AW), 0, status.eventCount(1));
+    axiSlaveRegisterR(axilEp, toSlv(48,AW), 0, status.dmaCtrlCount);
+    axiSlaveRegisterR(axilEp, toSlv(52,AW), 0, status.eventCount(2));
+    axiSlaveRegisterR(axilEp, toSlv(56,AW), 0, status.eventCount(3));
+    axiSlaveRegisterR(axilEp, toSlv(60,AW), 0, status.eventCount(4));
 
     case cacheS.state is
       when EMPTY_S   => cacheS_state := x"0";
@@ -216,37 +187,32 @@ begin  -- mapping
       when others    => cacheS_trigd := x"2";
     end case;
 
-    axilSlaveRegisterW(toSlv(64,12),  0, v.cacheSel );
-    axilSlaveRegisterR(toSlv(68,12),  0, cacheS_state );
-    axilSlaveRegisterR(toSlv(68,12),  4, cacheS_trigd );
-    axilSlaveRegisterR(toSlv(68,12),  8, cacheS.skip );
-    axilSlaveRegisterR(toSlv(68,12),  9, cacheS.ovflow );
-    axilSlaveRegisterR(toSlv(72,12),  0, resize(cacheS.baddr,16) );
-    axilSlaveRegisterR(toSlv(72,12), 16, resize(cacheS.eaddr,16) );
+    axiSlaveRegister (axilEp, toSlv(64,AW),  0, v.cacheSel  );
+    axiSlaveRegister (axilEp, toSlv(64,AW),  4, v.streamSel );
+    axiSlaveRegisterR(axilEp, toSlv(68,AW),  0, cacheS_state );
+    axiSlaveRegisterR(axilEp, toSlv(68,AW),  4, cacheS_trigd );
+    axiSlaveRegisterR(axilEp, toSlv(68,AW),  8, cacheS.skip );
+    axiSlaveRegisterR(axilEp, toSlv(68,AW),  9, cacheS.ovflow );
+    axiSlaveRegisterR(axilEp, toSlv(68,AW), 16, cacheS.tag );
+    axiSlaveRegisterR(axilEp, toSlv(72,AW),  0, resize(cacheS.baddr,16) );
+    axiSlaveRegisterR(axilEp, toSlv(72,AW), 16, resize(cacheS.eaddr,16) );
 
-    axilSlaveRegisterW(toSlv(104,12), 0, v.config.localId );
-    axilSlaveRegisterR(toSlv(108,12), 0, statusS.upstreamId(0) );
-    for i in 0 to 3 loop
-      axilSlaveRegisterR(toSlv(112+4*i,12), 0, statusS.dnstreamId(i) );
-    end loop;
+    axiSlaveRegisterR(axilEp, toSlv(76,AW),  0, statusS.build.state );
+    axiSlaveRegisterR(axilEp, toSlv(76,AW),  4, statusS.build.dumps );
+    axiSlaveRegisterR(axilEp, toSlv(76,AW),  8, statusS.build.hdrv  );
+    axiSlaveRegisterR(axilEp, toSlv(76,AW),  9, statusS.build.valid );
+    axiSlaveRegisterR(axilEp, toSlv(76,AW), 10, statusS.build.ready );
     
-    axilSlaveDefault(AXI_RESP_OK_C); 
+    axiSlaveRegister (axilEp, toSlv(104,AW), 0, v.config.localId );
+    
+    axiSlaveDefault(axilEp, v.axilWriteSlave, v.axilReadSlave, AXI_RESP_OK_C); 
     
     rin <= v;
   end process;
 
-  U_ICache : entity surf.SynchronizerVector
-    generic map ( WIDTH_G => 4 )
-    port map ( clk     => dmaClk,
-               dataIn  => r.cacheSel,
-               dataOut => cacheSel);
-  icache <= conv_integer(cacheSel);
-  cacheV <= cacheToSlv(status.eventCache(icache));
-  U_CacheS : entity surf.SynchronizerVector
-    generic map ( WIDTH_G => cacheV'length )
-    port map ( clk     => axiClk,
-               dataIn  => cacheV,
-               dataOut => cacheSV );
-  cacheS <= toCacheType(cacheSV);
+  istream <= conv_integer(r.streamSel);
+  icache  <= conv_integer(r.cacheSel);
+
+  cacheS <= status.eventCache(istream)(icache);
 
 end mapping;

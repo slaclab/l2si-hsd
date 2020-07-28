@@ -340,7 +340,7 @@ U_SyncSysRef : entity surf.Synchronizer
              dataIn  => r.sysref_sync_en,
              dataOut => sysref_sync_en );
 
-xcvr_rxrst      <= r.xcvr_rxrst or axilRst;
+xcvr_rxrst      <= r.xcvr_rxrst or axilRst or rst_rxclk;
 align_enable    <= r.align_enable;
 rxdfeagchold    <= r.rxdfeagchold;
 rxdfelfhold     <= r.rxdfelfhold;

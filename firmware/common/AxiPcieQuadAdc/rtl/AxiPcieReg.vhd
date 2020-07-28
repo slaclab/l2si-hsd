@@ -5,7 +5,7 @@
 -- Author     : Larry Ruckman  <ruckman@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-02-12
--- Last update: 2019-05-01
+-- Last update: 2020-03-05
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -180,7 +180,7 @@ architecture mapping of AxiPcieReg is
    signal ivsnWriteMaster     : AxiLiteWriteMasterType;
    signal ivsnWriteSlave      : AxiLiteWriteSlaveType;
    
-   constant DEBUG_C : boolean := true;
+   constant DEBUG_C : boolean := false;
 
    component ila_0
      port ( clk    : in sl;

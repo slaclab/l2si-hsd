@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-02-29
+-- Last update: 2020-07-28
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -59,12 +59,14 @@ entity QuadAdcInterleavePacked is
     din             :  in AdcWordArray(4*ROW_SIZE-1 downto 0);
     l1in            :  in sl;
     l1ina           :  in sl;
+    l0tag           :  in slv       (4 downto 0);
+    l1tag           :  in slv       (4 downto 0);
     l1a             : out slv       (3 downto 0);
     l1v             : out slv       (3 downto 0);
     --
     almost_full     : out sl;
     overflow        : out sl;
-    status          : out CacheArray(MAX_OVL_C-1 downto 0);
+    status          : out CacheStatusArray(MAX_STREAMS_C-1 downto 0);
     debug           : out slv(7 downto 0);
     -- readout interface
     axisMaster      : out surf.AxiStreamPkg.AxiStreamMasterType;
@@ -210,7 +212,7 @@ architecture mapping of QuadAdcInterleavePacked is
 
   signal r_fexb      : slv(3 downto 0) := (others=>'0');
   signal r_fexn      : slv(3 downto 0);
-  signal cacheStatus : CacheStatusArray(NSTREAMS_C-1 downto 0);
+  signal wraddr      : Slv16Array      (NSTREAMS_C-1 downto 0);
   signal rdaddr      : Slv16Array      (NSTREAMS_C-1 downto 0);
 
   -- signals for simulation
@@ -272,7 +274,6 @@ begin  -- mapping
                  probe0(255 downto 148) => (others=>'0') );
   end generate;
     
-  status  <= cacheStatus(0);
 --  streams <= resize(r.fexEnable,4);
   debug   <= resize(nfree(0),8);
 
@@ -355,7 +356,7 @@ begin  -- mapping
       generic map ( ALG_ID_G      => i,
                     ALGORITHM_G   => ALGORITHM_G(i),
                     AXIS_CONFIG_G => work.AxiStreamPkg.toAxiStreamConfig(SAXIS_CONFIG_C),
-                    DEBUG_G       => ite(i=0,DEBUG_G,false) )
+                    DEBUG_G       => ite(i=1,DEBUG_G,false) )
       port map ( clk               => clk,
                  rst               => rst,
                  clear             => clear,
@@ -367,9 +368,12 @@ begin  -- mapping
                  lclose_phase      => lclose_phase(i),
                  l1in              => r.l1in      (i),
                  l1ina             => r.l1ina     (i),
+                 l0tag             => l0tag,
+                 l1tag             => l1tag,
                  free              => free            (i),
                  nfree             => nfree           (i),
-                 status            => cacheStatus     (i),
+                 status            => status          (i),
+                 writeaddr         => wraddr          (i),
                  readaddr          => rdaddr          (i),
                  axisMaster        => axisMasters     (i),
                  axisSlave         => axisSlaves      (i),
@@ -385,13 +389,14 @@ begin  -- mapping
                  axilWriteSlave    => maxilWriteSlaves (i+1) );
   end generate;
 
-  GEN_REM : for i in NSTREAMS_C to 3 generate
+  GEN_REM : for i in NSTREAMS_C to MAX_STREAMS_C-1 generate
     l1v   (i) <= '0';
     l1a   (i) <= '0';
+    status(i) <= (others=>CACHE_INIT_C);
   end generate;
   
   process (r, rst, start, clear, free, nfree, l1in, l1ina, 
-           axisMasters, maxisSlave, cntOflow, rdaddr,
+           axisMasters, maxisSlave, axisSlaveTmp, cntOflow, rdaddr, wraddr,
            maxilWriteMasters, maxilReadMasters) is
     variable v     : RegType;
     variable ep    : AxiLiteEndpointType;
@@ -474,9 +479,13 @@ begin  -- mapping
     end loop;
     axiSlaveRegisterR( ep, x"08",12, maxisSlave.tReady );
     axiSlaveRegisterR( ep, x"08",13, r.axisMaster.tValid );
+    axiSlaveRegisterR( ep, x"08",14, axisSlaveTmp.tReady );
     axiSlaveRegisterR( ep, x"08",16, rdaddr(r.fexn) );
---    axiSlaveRegisterR( ep, x"0C", 0, r.free  );
-    
+    axiSlaveRegisterR( ep, x"0C", 0, r.npend  );
+    axiSlaveRegisterR( ep, x"0C", 5, r.ntrig  );
+    axiSlaveRegisterR( ep, x"0C",10, r.nread  );
+    axiSlaveRegisterR( ep, x"0C",16, wraddr(r.fexn) );
+
     for i in 0 to NSTREAMS_C-1 loop
       axiSlaveRegister ( ep, toSlv(16*i+16,8), 0, v.fexPrescale(i) );
       axiSlaveRegister ( ep, toSlv(16*i+20,8), 0, v.fexBegin (i) );

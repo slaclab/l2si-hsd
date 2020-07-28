@@ -223,7 +223,7 @@ begin
     for i in 0 to ROW_SIZE-1 loop
       for j in 0 to ILV_G-1 loop
         k := 4*i+j;
-        if ((x(k) < r.xlo) or (x(k) > r.xhi)) then
+        if ((x(k) < r.xlo) or (x(k) > r.xhi) or (tin(i) /= "00")) then
           ikeepl := i;
         end if;
       end loop;
@@ -234,7 +234,7 @@ begin
     for i in ROW_SIZE-1 downto 0 loop
       for j in 0 to ILV_G-1 loop
         k := 4*i+j;
-        if ((x(k) < r.xlo) or (x(k) > r.xhi)) then
+        if ((x(k) < r.xlo) or (x(k) > r.xhi) or (tin(i) /= "00")) then
           ikeepf := i;
         end if;
       end loop;
@@ -339,7 +339,7 @@ begin
     iopen := ROW_SIZE-1;
     for i in ROW_SIZE-1 downto 0 loop
       tsum := tsum or tsave(i);
-      if tsave(i)(0) = '1' then
+      if tsave(i) /= "00" then
         iopen := i;
       end if;
     end loop;
@@ -348,7 +348,7 @@ begin
     dcount := r.count - r.count_last;
 
     -- window is open and this row needs readout
-    if (((r.nopen/=0) or (tsum(0)='1')) and r.akeep(0).state/=KEEP_NONE) then
+    if (((r.nopen/=0) or (tsum/="00")) and r.akeep(0).state/=KEEP_NONE) then
       if (r.lskip = '1' or
           r.akeep(0).state = KEEP_MID or
           r.akeep(0).state = KEEP_TAIL) then --  samples have been skipped

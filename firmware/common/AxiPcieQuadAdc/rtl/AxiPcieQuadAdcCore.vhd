@@ -5,7 +5,7 @@
 -- Author     : Larry Ruckman  <ruckman@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-02-12
--- Last update: 2020-02-29
+-- Last update: 2020-03-05
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -195,7 +195,7 @@ architecture mapping of AxiPcieQuadAdcCore is
 
    signal timingSimClk : sl;
      
-   constant DEBUG_C : boolean := true;
+   constant DEBUG_C : boolean := false;
 
    component ila_0
      port ( clk : in sl;

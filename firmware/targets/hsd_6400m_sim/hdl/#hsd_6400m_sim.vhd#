@@ -358,7 +358,7 @@ begin
     wait for 1200 ns;
     for i in 0 to 1 loop
       a := 1024*8*i + 1024*4;
-      wreg(a+16,x"00000000"); -- prescale
+      wreg(a+16,x"00000003"); -- prescale
       wreg(a+20,x"00640004"); -- fexLength/Delay
       wreg(a+24,x"00040C00"); -- almostFull
       wreg(a+32,x"00000000"); -- prescale
@@ -370,14 +370,16 @@ begin
 --      wreg(a+256*2+16,x"00000000");  -- xlo
 --      wreg(a+256*2+24,x"00000fff");  -- xhi
       wreg(a+256*2+16,x"00000801");  -- xlo
-      wreg(a+256*2+24,x"0000080e");  -- xhi
+      wreg(a+256*2+24,x"0000080e
+
+             ");  -- xhi
       wreg(a+256*2+32,x"00000001");  -- tpre
       wreg(a+256*2+40,x"00000002");  -- tpost
       --wreg(a+256*3+16,x"00000040");
       --wreg(a+256*3+24,x"000003c0");
       --wreg(a+256*3+32,x"00000003");
       --wreg(a+256*3+40,x"00000002");
-      wreg(a+ 0,x"00000042"); -- fexEnable
+      wreg(a+ 0,x"00000041"); -- fexEnable
     end loop;
     wait for 600 ns;
 

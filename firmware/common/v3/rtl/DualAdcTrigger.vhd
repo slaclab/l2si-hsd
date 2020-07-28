@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-03-01
+-- Last update: 2020-07-28
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -52,25 +52,13 @@ entity DualAdcTrigger is
          ql1in       : out sl;
          ql1ina      : out sl;
          clear       : out sl;
-         start       : out sl );
+         start       : out sl;
+         l0tag       : out slv(4 downto 0);
+         l1tag       : out slv(4 downto 0) );
 end DualAdcTrigger;
 
 architecture mapping of DualAdcTrigger is
 
-  type TrigRegType is record
-    l0inacc : sl;
-    l1inrej : sl;
-    l1inacc : sl;
-  end record;
-
-  constant TRIG_REG_INIT_C : TrigRegType := (
-    l0inacc => '0',
-    l1inrej => '0',
-    l1inacc => '0' );
-
-  signal t    : TrigRegType := TRIG_REG_INIT_C;
-  signal tin  : TrigRegType;
-  
   type RegType is record
     afull    : sl;
     afullcnt : slv(31 downto 0);
@@ -91,10 +79,11 @@ architecture mapping of DualAdcTrigger is
   signal r   : RegType := REG_INIT_C;
   signal rin : RegType;
 
-  signal l0inacc, sl0inacc : sl;
-  signal l1inacc, sl1inacc : sl;
-  signal l1inrej, sl1inrej : sl;
-  
+  signal triggerDataSlv       : slv(47 downto 0);
+  signal triggerDataSlvSync   : slv(47 downto 0);
+  signal triggerDataValidSync : sl;
+  signal triggerDataSync      : TriggerEventDataType;
+
 begin
 
   afullOut  <= r.afull;
@@ -103,7 +92,9 @@ begin
   ql1ina    <= r.l1ina(0);
   clear     <= r.clear;
   start     <= r.start;
-
+  l0tag     <= triggerDataSync.l0Tag;
+  l1tag     <= triggerDataSync.l1Tag;
+  
   --
   --  Must do the logical operations before crossing clock domains
   --
@@ -127,23 +118,26 @@ begin
     end if;
   end process t_seq;
 
-  U_L0INACC : entity surf.SynchronizerOneShot
-    port map ( clk     => clk,
-               dataIn  => t.l0inacc,
-               dataOut => sl0inacc );
+  --
+  --  Its possible for these to cross on different clks
+  --  Add the tagID, too
+  --
+  triggerDataSlv <= toSlv(triggerData);
+  triggerDataSync <= toXpmEventDataType(triggerDataSlvSync);
+  
+  U_L0L1 : entity surf.SynchronizerFifo
+    generic map ( DATA_WIDTH_G => triggerDataSlv'length )
+    port map ( wr_clk   => triggerClk,
+               din      => triggerDataSlv,
+               rd_clk   => clk,
+               valid    => triggerDataValidSync,
+               dout     => triggerDataSlvSync );
 
-  U_L1INACC : entity surf.SynchronizerOneShot
-    port map ( clk     => clk,
-               dataIn  => t.l1inacc,
-               dataOut => sl1inacc );
-
-  U_L1INREJ : entity surf.SynchronizerOneShot
-    port map ( clk      => clk,
-               dataIn   => t.l1inrej,
-               dataOut  => sl1inrej );
-
-  process (r, rst, sl0inacc, sl1inacc, sl1inrej, afullIn, enable) is
+  process (r, rst, triggerDataSync, triggerDataValidSync, afullIn, enable) is
     variable v   : RegType;
+    variable l0ina : sl;
+    variable l1in  : sl;
+    variable l1ina : sl;
   begin  -- process
     v := r;
 
@@ -152,13 +146,23 @@ begin
       v.afullcnt := r.afullcnt+1;
     end if;
 
-    v.l1in  := (sl1inacc or sl1inrej) & r.l1in (r.l1in'left  downto 1) ;
-    v.l1ina := (sl1inacc            ) & r.l1ina(r.l1ina'left downto 1);
+    if triggerDataValidSync='1' and triggerDataSync.valid='1' then
+      l0ina := triggerDataSync.l0Accept;
+      l1in  := triggerDataSync.l1Expect;
+      l1ina := triggerDataSync.l1Accept;
+    else
+      l0ina := '0';
+      l1in  := '0';
+      l1ina := '0';
+    end if;
+      
+    v.l1in  := l1in  & r.l1in (r.l1in'left  downto 1) ;
+    v.l1ina := l1ina & r.l1ina(r.l1ina'left downto 1);
 
     v.clear := not uOr(enable);
     
     v.start := '0';
-    if sl0inacc = '1' then
+    if l0ina = '1' then
       v.start := '1';
     end if;
     

@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-03-01
+-- Last update: 2020-07-28
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -77,7 +77,8 @@ entity ChipAdcEvent is
 --    dmaFullThr    :  in slv(FIFO_ADDR_WIDTH_C-1 downto 0);
     dmaFullS        : out sl;
     dmaFullCnt      : out slv(31 downto 0);
-    status          : out CacheArray(MAX_OVL_C-1 downto 0);
+    status          : out CacheStatusArray(MAX_STREAMS_C-1 downto 0);
+    buildstatus     : out BuildStatusType;
     debug           : out slv(7 downto 0);
     dmaMaster       : out AxiStreamMasterType;
     dmaSlave        : in  AxiStreamSlaveType );
@@ -111,10 +112,12 @@ architecture mapping of ChipAdcEvent is
   signal ql1in  : sl;
   signal ql1ina : sl;
   signal shiftTmp : slv(31 downto 0);
-  signal shift  : slv(31 downto 0);
+  signal shift  : slv(31 downto 0) := (others=>'0');
   signal start  : sl;
   signal clear : sl;
-
+  signal l0tag : slv(4 downto 0);
+  signal l1tag : slv(4 downto 0);
+  
   constant CHN_AXIS_CONFIG_C : AxiStreamConfigType := ssiAxiStreamConfig(32);
   
   -- interleave payload
@@ -140,12 +143,9 @@ architecture mapping of ChipAdcEvent is
   signal bramWr    : BRamWriteMasterArray(NRAM_C-1 downto 0);
   signal bramRd    : BRamReadMasterArray (NRAM_C-1 downto 0);
   signal bRamSl    : BRamReadSlaveArray  (NRAM_C-1 downto 0);
-
-  signal cacheStatus : CacheArray(MAX_OVL_C-1 downto 0);
-
+  
 begin  -- mapping
 
-  status     <= cacheStatus;
   dmaFullS   <= afull;
   dmaFullCnt <= afullCnt;
   eventTrig  <= start;
@@ -213,11 +213,13 @@ begin  -- mapping
                din             => iadc          ,
                l1in            => ql1in,
                l1ina           => ql1ina,
+               l0tag           => l0tag,
+               l1tag           => l1tag,
                l1a             => open,
                l1v             => open,
                almost_full     => ilvafull      ,
                overflow        => ilvoflow      ,
-               status          => cacheStatus   ,
+               status          => status        ,
                debug           => debug         ,
                axisMaster      => ilvmasters    ,
                axisSlave       => ilvslaves     ,
@@ -248,7 +250,9 @@ begin  -- mapping
                chnMaster   => ilvmasters,
                chnSlave    => ilvslaves ,
                dmaMaster   => dmaMaster,
-               dmaSlave    => dmaSlave  );
+               dmaSlave    => dmaSlave,
+               --
+               status      => buildStatus );
 
   U_Trigger : entity work.DualAdcTrigger
     generic map ( NCHAN_C => 1 )
@@ -265,8 +269,10 @@ begin  -- mapping
                ql1in       => ql1in,
                ql1ina      => ql1ina,
                clear       => clear,
-               start       => start );
+               start       => start,
+               l0tag       => l0tag,
+               l1tag       => l1tag );
 
-  shift <= adcValid & shiftTmp(30 downto 0);
+  shift(31) <= adcValid;
 
 end mapping;

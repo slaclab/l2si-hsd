@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2019-10-24
+-- Last update: 2020-03-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -33,6 +33,8 @@ use surf.StdRtlPkg.all;
 use surf.AxiStreamPkg.all;
 use surf.SsiPkg.all;
 
+use work.QuadAdcPkg.all;
+
 entity QuadAdcChannelData is
   generic (
     TPD_G             : time    := 1 ns;
@@ -52,7 +54,9 @@ entity QuadAdcChannelData is
     chnMaster    :  in AxiStreamMasterType;
     chnSlave     : out AxiStreamSlaveType;
     dmaMaster    : out AxiStreamMasterType;
-    dmaSlave     :  in AxiStreamSlaveType );
+    dmaSlave     :  in AxiStreamSlaveType;
+    --
+    status       : out BuildStatusType );
 end QuadAdcChannelData;
 
 architecture mapping of QuadAdcChannelData is
@@ -68,6 +72,7 @@ architecture mapping of QuadAdcChannelData is
     master   : AxiStreamMasterType;
     slave    : AxiStreamSlaveType;
     tmo      : integer range 0 to TMO_VAL_C;
+    dumps    : slv(3 downto 0);
   end record;
 
   constant REG_INIT_C : RegType := (
@@ -75,7 +80,8 @@ architecture mapping of QuadAdcChannelData is
     state     => S_IDLE,
     master    => AXI_STREAM_MASTER_INIT_C,
     slave     => AXI_STREAM_SLAVE_INIT_C,
-    tmo       => TMO_VAL_C );
+    tmo       => TMO_VAL_C,
+    dumps     => (others=>'0') );
 
   signal r   : RegType := REG_INIT_C;
   signal rin : RegType;
@@ -97,13 +103,20 @@ begin  -- mapping
     report "EventHeader insertion requires TDATA_BYTES_C=16 or 32"
     severity error;
 
+  status.state <= r_state;
+  status.dumps <= r.dumps;
+  status.hdrv  <= eventHdrV;
+  status.valid <= r.master.tValid;
+  status.ready <= dmaSlave.tReady;
+  
+  r_state <= "000" when r.state = S_WAIT else
+             "001" when r.state = S_IDLE else
+             "010" when r.state = S_READHDR else
+             "011" when r.state = S_WRITEHDR else
+             "100" when r.state = S_READCHAN else
+             "101";
+  
   GEN_DEBUG : if DEBUG_C generate
-    r_state <= "000" when r.state = S_WAIT else
-               "001" when r.state = S_IDLE else
-               "010" when r.state = S_READHDR else
-               "011" when r.state = S_WRITEHDR else
-               "100" when r.state = S_READCHAN else
-               "101";
     U_ILA : ila_0
       port map ( clk    => dmaClk,
                  probe0(0) => dmaRst,
@@ -206,6 +219,7 @@ begin  -- mapping
     end case;
 
     if r.tmo = 0 then
+      v.dumps := r.dumps+1;
       v.state := S_DUMP;
       ssiSetUserEofe(SAXIS_CONFIG_G,v.master,'1');
       v.master.tValid := '1';

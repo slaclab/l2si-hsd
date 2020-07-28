@@ -349,6 +349,7 @@ begin
    --         sampleData_i   => s_sampleDataArr(i),
    --         testSig_o      => pulse_o(i));
    --end generate;
+   pulse_o <= (others=>'0');
 
    -- Put sync output in 'z' if not enabled
    syncVectEn : for i in L_G-1 downto 0 generate

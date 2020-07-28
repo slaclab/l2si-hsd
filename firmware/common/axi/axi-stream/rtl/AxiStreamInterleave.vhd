@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2020-02-06
+-- Last update: 2020-03-07
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -62,6 +62,8 @@ architecture top_level_app of AxiStreamInterleave is
   signal r   : RegType := REG_INIT_C;
   signal rin : RegType;
 
+  constant DEBUG_C : boolean := false;
+
   component ila_0
     port ( clk    : in sl;
            probe0 : in slv(255 downto 0) );
@@ -69,32 +71,34 @@ architecture top_level_app of AxiStreamInterleave is
 
 begin
 
-  U_ILA : ila_0
-    port map ( clk     => axisClk,
-               probe0( 15 downto   0) => r.masters(0).tData(15 downto 0),
-               probe0( 31 downto  16) => r.masters(1).tData(15 downto 0),
-               probe0( 47 downto  32) => r.masters(2).tData(15 downto 0),
-               probe0( 63 downto  48) => r.masters(3).tData(15 downto 0),
-               probe0(            64) => r.masters(0).tValid,
-               probe0(            65) => r.masters(1).tValid,
-               probe0(            66) => r.masters(2).tValid,
-               probe0(            67) => r.masters(3).tValid,
-               probe0(            68) => r.masters(0).tLast,
-               probe0(            69) => r.masters(1).tLast,
-               probe0(            70) => r.masters(2).tLast,
-               probe0(            71) => r.masters(3).tLast,
-               probe0( 79 downto  72) => r.tSeq,
-               probe0( 83 downto  80) => r.nready,
-               probe0(            84) => r.first,
-               probe0(            85) => sAxisMaster.tValid,
-               probe0(            86) => sAxisMaster.tLast,
-               probe0(            87) => r.slave.tReady,
-               probe0(            88) => mAxisSlave(0).tReady,
-               probe0(            89) => mAxisSlave(1).tReady,
-               probe0(            90) => mAxisSlave(2).tReady,
-               probe0(            91) => mAxisSlave(3).tReady,
-               probe0(255 downto  92) => (others=>'0') );
-  
+  GEN_DEBUG : if DEBUG_C generate
+    U_ILA : ila_0
+      port map ( clk     => axisClk,
+                 probe0( 15 downto   0) => r.masters(0).tData(15 downto 0),
+                 probe0( 31 downto  16) => r.masters(1).tData(15 downto 0),
+                 probe0( 47 downto  32) => r.masters(2).tData(15 downto 0),
+                 probe0( 63 downto  48) => r.masters(3).tData(15 downto 0),
+                 probe0(            64) => r.masters(0).tValid,
+                 probe0(            65) => r.masters(1).tValid,
+                 probe0(            66) => r.masters(2).tValid,
+                 probe0(            67) => r.masters(3).tValid,
+                 probe0(            68) => r.masters(0).tLast,
+                 probe0(            69) => r.masters(1).tLast,
+                 probe0(            70) => r.masters(2).tLast,
+                 probe0(            71) => r.masters(3).tLast,
+                 probe0( 79 downto  72) => r.tSeq,
+                 probe0( 83 downto  80) => r.nready,
+                 probe0(            84) => r.first,
+                 probe0(            85) => sAxisMaster.tValid,
+                 probe0(            86) => sAxisMaster.tLast,
+                 probe0(            87) => r.slave.tReady,
+                 probe0(            88) => mAxisSlave(0).tReady,
+                 probe0(            89) => mAxisSlave(1).tReady,
+                 probe0(            90) => mAxisSlave(2).tReady,
+                 probe0(            91) => mAxisSlave(3).tReady,
+                 probe0(255 downto  92) => (others=>'0') );
+  end generate;
+    
   comb : process ( r, axisRst, sAxisMaster, mAxisSlave ) is
     variable v : RegType;
     variable m,n : integer;

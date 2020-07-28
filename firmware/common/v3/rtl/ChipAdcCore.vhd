@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-03-01
+-- Last update: 2020-07-28
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -92,10 +92,7 @@ architecture mapping of ChipAdcCore is
   signal configA              : QuadAdcConfigType; -- adcClk domain
   signal vConfig, vConfigA    : slv(QADC_CONFIG_TYPE_LEN_C-1 downto 0);
   
-  signal eventSel             : sl;
   signal rstCount             : sl;
-
-  signal irqRequest           : sl;
 
 --  signal dmaFullThr, dmaFullThrS : slv(23 downto 0) := (others=>'0');
   signal dmaFullCnt           : slv(31 downto 0);
@@ -107,6 +104,8 @@ architecture mapping of ChipAdcCore is
   signal dmaStrobe            : sl;
   signal rstFifo              : sl;
 
+  signal eventAxisSlaveTmp    : AxiStreamSlaveType;
+  
   signal status               : QuadAdcStatusType;
   signal debug                : slv( 7 downto 0);
 
@@ -119,15 +118,22 @@ architecture mapping of ChipAdcCore is
   signal axilReadMasters   : AxiLiteReadMasterArray (NUM_AXI_MASTERS_C-1 downto 0);
   signal axilReadSlaves    : AxiLiteReadSlaveArray  (NUM_AXI_MASTERS_C-1 downto 0);
 
-  signal eventAxisSlaveTmp  : AxiStreamSlaveType;
-  signal eventAxisSlaveSync : AxiStreamSlaveType; -- synced to evrClk
   signal eventTrig          : sl;
-  signal eventTrigSync      : sl;
 
+  type CountRegType is record
+    count : Slv32Array(2 downto 0);
+  end record;
+
+  constant COUNT_REG_INIT_C : CountRegType := ( count => (others=>(others=>'0')) );
+
+  signal r_t, r_d : CountRegType;
+  signal rin_t, rin_d : CountRegType := COUNT_REG_INIT_C;
+
+  signal rstCountSyncT, rstCountSyncD : sl;
+  
 begin  
 
   dmaRst             <= dmaRstS;
-  eventSel           <= triggerData.valid and triggerData.l0Accept;
   eventAxisSlave     <= eventAxisSlaveTmp;
 
   --------------------------
@@ -185,32 +191,8 @@ begin
                   dmaMaster  => dmaRxIbMaster,
                   dmaSlave   => dmaRxIbSlave ,
                   status     => status.eventCache,
+                  buildstatus=> status.build,
                   debug      => debug );
-
-  Sync_ReadCnt  : entity surf.Synchronizer
-    port map ( clk     => triggerClk,
-               dataIn  => eventAxisSlaveTmp.tReady,
-               dataOut => eventAxisSlaveSync.tReady );
-  
-  Sync_TrigCnt  : entity surf.Synchronizer
-    port map ( clk     => triggerClk,
-               dataIn  => eventTrig,
-               dataOut => eventTrigSync );
-  
-  Sync_EvtCount : entity surf.SyncStatusVector
-    generic map ( WIDTH_G => 5 )
-    port map    ( statusIn(4)  => '0',
-                  statusIn(3)  => eventTrigSync,
-                  statusIn(2)  => eventAxisSlaveSync.tReady,
-                  statusIn(1)  => eventSel,
-                  statusIn(0)  => triggerBus.strobe,
-                  cntRstIn     => rstCount,
-                  rollOverEnIn => (others=>'1'),
-                  cntOut       => status.eventCount,
-                  wrClk        => triggerClk,
-                  wrRst        => '0',
-                  rdClk        => axiClk,
-                  rdRst        => axiRst );
 
   U_DSReg : entity work.ChipAdcReg
     port map (    axiClk              => axiClk,
@@ -227,10 +209,10 @@ begin
                   fbRst               => fbPhyRst  ,
                   fbPLLRst            => fbPllRst  ,
                   -- status
-                  irqReq              => irqRequest   ,
-                  rstCount            => rstCount     ,
-                  dmaClk              => dmaClk       ,
-                  status              => status       );
+                  irqReq              => '0'       ,
+                  rstCount            => rstCount  ,
+                  dmaClk              => dmaClk    ,
+                  status              => status    );
 
   -- Synchronize configurations to adcClk
   vConfig <= toSlv       (config);
@@ -273,5 +255,81 @@ begin
   U_DMARST : BUFG
     port map ( O => dmaRstS,
                I => dmaRstI(2) );
+
+  Sync_RstCountT  : entity surf.RstSync
+    port map ( clk      => triggerClk,
+               asyncRst => rstCount,
+               syncRst  => rstCountSyncT );
+  
+  Sync_RstCountD  : entity surf.RstSync
+    port map ( clk      => dmaClk,
+               asyncRst => rstCount,
+               syncRst  => rstCountSyncD );
+  
+  comb_t : process(triggerRst, rstCountSyncT, r_t, triggerBus, triggerData, eventAxisSlaveTmp, eventAxisMaster) is
+    variable v : CountRegType;
+  begin
+    v := r_t;
+
+    if triggerBus.strobe = '1' then
+      v.count(0) := r_t.count(0) + 1;
+    end if;
+
+    if triggerData.valid = '1' and triggerData.l0Accept = '1' then
+      v.count(1) := r_t.count(1) + 1;
+    end if;
+
+    if eventAxisMaster.tValid = '1' and eventAxisSlaveTmp.tReady = '1' then
+      v.count(2) := r_t.count(2) + 1;
+    end if;
+
+    if triggerRst = '1' or rstCountSyncT = '1' then
+      v := COUNT_REG_INIT_C;
+    end if;
+
+    rin_t <= v;
+  end process comb_t;
+
+  seq_t : process(triggerClk) is
+  begin
+    if rising_edge(triggerClk) then
+      r_t <= rin_t;
+    end if;
+  end process seq_t;
+
+  GEN_SYNC_COUNT : for i in 0 to 2 generate
+    U_SyncCount : entity surf.SynchronizerFifo
+      generic map ( DATA_WIDTH_G => 32 )
+      port map ( rst    => axiRst,
+                 wr_clk => triggerClk,
+                 din    => r_t.count(i),
+                 rd_clk => axiClk,
+                 dout   => status.eventCount(i) );
+  end generate;
+  
+  comb_d : process(dmaRstS, rstCountSyncD, r_d, eventTrig) is
+    variable v : CountRegType;
+  begin
+    v := r_d;
+
+    if eventTrig = '1' then
+      v.count(0) := r_d.count(0) + 1;
+    end if;
+
+    if dmaRstS = '1' or rstCountSyncD = '1' then
+      v := COUNT_REG_INIT_C;
+    end if;
+
+    rin_d <= v;
+  end process comb_d;
+
+  U_SyncTrigCount : entity surf.SynchronizerFifo
+    generic map ( DATA_WIDTH_G => 32 )
+    port map ( rst    => axiRst,
+               wr_clk => dmaClk,
+               din    => r_d.count(0),
+               rd_clk => axiClk,
+               dout   => status.eventCount(3) );
+               
   
 end mapping;
