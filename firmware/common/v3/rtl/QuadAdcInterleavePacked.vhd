@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-07-28
+-- Last update: 2020-07-31
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -57,6 +57,7 @@ entity QuadAdcInterleavePacked is
     start           :  in sl;
     shift           :  in slv       (3 downto 0);
     din             :  in AdcWordArray(4*ROW_SIZE-1 downto 0);
+    dvalid          :  in sl;
     l1in            :  in sl;
     l1ina           :  in sl;
     l0tag           :  in slv       (4 downto 0);
@@ -264,14 +265,16 @@ begin  -- mapping
                  probe0(88)           => start,
                  probe0(89)           => l1in,
                  probe0(90)           => l1ina,
-                 probe0( 95 downto  91) => r.npend,
-                 probe0(100 downto  96) => r.ntrig,
-                 probe0(105 downto 101) => r.nread,
-                 probe0(121 downto 106) => free(0),
-                 probe0(126 downto 122) => nfree(0),
-                 probe0(142 downto 127) => free(1),
-                 probe0(147 downto 143) => nfree(1),
-                 probe0(255 downto 148) => (others=>'0') );
+                 probe0( 95 downto  91) => l0tag,
+                 probe0(100 downto  96) => l1tag,
+                 probe0(105 downto 101) => r.npend,
+                 probe0(110 downto 106) => r.ntrig,
+                 probe0(115 downto 111) => r.nread,
+                 probe0(131 downto 116) => free(0),
+                 probe0(136 downto 132) => nfree(0),
+                 probe0(152 downto 137) => free(1),
+                 probe0(157 downto 153) => nfree(1),
+                 probe0(255 downto 158) => (others=>'0') );
   end generate;
     
 --  streams <= resize(r.fexEnable,4);
@@ -279,7 +282,6 @@ begin  -- mapping
 
   overflow <= r.overflow or uOr(axisOflow);
               
-  --  Do we have to cross clock domains here or does VivadoHLS do it for us?
   GEN_AXIL_ASYNC : entity surf.AxiLiteAsync
     port map ( sAxiClk         => axilClk,
                sAxiClkRst      => axilRst,
@@ -361,6 +363,7 @@ begin  -- mapping
                  rst               => rst,
                  clear             => clear,
                  din               => din,
+                 dvalid            => dvalid,
                  lskip             => lskip       (i),
                  lopen             => lopen       (i),
                  lopen_phase       => lopen_phase (i),

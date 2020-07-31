@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2020-03-06
+-- Last update: 2020-07-31
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -146,7 +146,8 @@ architecture top_level_app of hsd_6400m_sim is
 
    signal fmcClk  : slv(NFMC_C-1 downto 0);
    signal pgpRxOut       : Pgp3RxOutType;
-
+   signal msgConfig    : XpmPartMsgConfigType := XPM_PART_MSG_CONFIG_INIT_C;
+   
 begin
 
    dmaData <= dmaIbMaster(0).tData(dmaData'range);
@@ -236,7 +237,9 @@ begin
                 bpRxClk    => '0',
                 bpRxClkRst => '0',
                 bpRxLinkUp => (others=>'0'),
-                bpRxLinkFull => (others=>(others=>'0')) );
+                bpRxLinkFull => (others=>(others=>'0')),
+                --
+                msgConfig    => msgConfig );
 
    timingBus.modesel <= '1';
    U_RxLcls : entity lcls_timing_core.TimingFrameRx
@@ -377,7 +380,8 @@ begin
       --wreg(a+256*3+24,x"000003c0");
       --wreg(a+256*3+32,x"00000003");
       --wreg(a+256*3+40,x"00000002");
-      wreg(a+ 0,x"00000042"); -- fexEnable
+      --wreg(a+ 0,x"00000042"); -- fexEnable
+      wreg(a+ 0,x"00000001"); -- fexEnable
     end loop;
     wait for 600 ns;
 
@@ -401,8 +405,19 @@ begin
     end loop;
 
     axilDone <= '1';
-    
-    wait;
+
+    wait for 100 us;
+
+    for i in 1 to 10 loop
+      msgConfig.header <= '1' & toSlv(i,7);
+      wait until regClk='0';
+      msgConfig.insert <= '1';
+      wait until regClk='1';
+      wait until regClk='0';
+      msgConfig.insert <= '0';
+      wait for 40 us;
+    end loop;
+
   end process;
 
   U_XTC : entity work.HsdXtc
@@ -413,7 +428,8 @@ begin
 
   throttle_p : process ( dmaClk ) is
     variable count     : slv(7 downto 0) := (others=>'0');
-    constant RELEASE_C : slv(7 downto 0) := toSlv(63,count'length);
+--    constant RELEASE_C : slv(7 downto 0) := toSlv(63,count'length);
+    constant RELEASE_C : slv(7 downto 0) := toSlv(3,count'length);
   begin
     if rising_edge(dmaClk) then
       if count = RELEASE_C then

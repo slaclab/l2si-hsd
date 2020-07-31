@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-03-12
+-- Last update: 2020-07-30
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -96,7 +96,9 @@ architecture mapping of QuadAdcChannelData is
   end  component;
 
   signal r_state : slv(2 downto 0);
-  
+  signal hdrtag  : slv(4 downto 0);
+  signal chntag  : slv(4 downto 0);
+
 begin  -- mapping
 
   assert (SAXIS_CONFIG_G.TDATA_BYTES_C = 32)
@@ -115,6 +117,9 @@ begin  -- mapping
              "011" when r.state = S_WRITEHDR else
              "100" when r.state = S_READCHAN else
              "101";
+
+  hdrtag  <= eventHdr(85 downto 81);
+  chntag  <= chnMaster.tData(84 downto 80);
   
   GEN_DEBUG : if DEBUG_C generate
     U_ILA : ila_0
@@ -125,11 +130,15 @@ begin  -- mapping
                  probe0(3) => chnMaster.tValid,
                  probe0(4) => chnMaster.tLast,
                  probe0(5) => dmaSlave.tReady,
-                 probe0(37 downto 6) => eventHdr(31 downto 0),
+                 probe0(21 downto 6)  => eventHdr(95 downto 80),
+                 probe0(26 downto 22) => hdrtag,
+                 probe0(31 downto 27) => chntag,
+                 probe0(37 downto 32) => (others=>'0'),
                  probe0(69 downto 38) => chnMaster.tData(31 downto 0),
                  probe0(72 downto 70) => r_state,
                  probe0(73)           => tSlave.tReady,
-                 probe0(255 downto 74) => (others=>'0') );
+                 probe0(74)           => r.hdrRd,
+                 probe0(255 downto 75) => (others=>'0') );
   end generate;
   
   U_FIFO : entity surf.AxiStreamFifoV2
@@ -181,6 +190,7 @@ begin  -- mapping
           if noPayload = '1' then
             v.master.tValid := '1';
             v.master.tLast  := '1';
+            ssiSetUserEofe(SAXIS_CONFIG_G,v.master,'0');
             v.hdrRd := '1';
             v.state := S_WAIT;
           else
@@ -207,13 +217,13 @@ begin  -- mapping
           v.slave.tReady := chnMaster.tValid;
           if chnMaster.tLast='1' then
             ssiSetUserEofe(SAXIS_CONFIG_G,v.master,'0');
-            v.state := S_IDLE; 
+            v.state := S_WAIT; 
           end if;
         end if;
       when S_DUMP =>
         v.slave.tReady := '1';
         if v.master.tLast='1' then
-          v.state := S_IDLE;
+          v.state := S_WAIT;
         end if;
       when others => NULL;
     end case;

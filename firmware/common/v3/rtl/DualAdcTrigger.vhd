@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-07-28
+-- Last update: 2020-07-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -42,7 +42,7 @@ entity DualAdcTrigger is
   generic ( NCHAN_C : integer := 1 );
   port ( triggerClk  : in  sl;
          triggerRst  : in  sl;
-         triggerData : in TriggerEventDataType;
+         triggerData : in  TriggerEventDataType;
          --
          clk         : in  sl;
          rst         : in  sl;
@@ -123,7 +123,8 @@ begin
     if triggerDataValidSync='1' and triggerDataSync.valid='1' then
       l0ina := triggerDataSync.l0Accept;
       l1in  := triggerDataSync.l1Expect;
-      l1ina := triggerDataSync.l1Accept;
+      l1ina := triggerDataSync.l1Expect and
+               triggerDataSync.l1Accept;
     else
       l0ina := '0';
       l1in  := '0';

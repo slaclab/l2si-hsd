@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-07-28
+-- Last update: 2020-07-31
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -60,6 +60,7 @@ entity hsd_fex_packed is
     clear           :  in sl;
     --din             :  in Slv44Array(7 downto 0);  -- row of data
     din             :  in AdcWordArray(ILV_G*ROW_SIZE-1 downto 0);
+    dvalid          :  in sl;
     lskip           :  in sl;                      -- skip sampling (cache
                                                    -- header for readout)
     lopen           :  in sl;                      -- begin sampling
@@ -296,7 +297,7 @@ begin
                syncRst  => configSync );
   
   comb : process( r, clear, lopen, lskip, lclose, lopen_phase, lclose_phase,
-                  l1in, l1ina, l0tag, l1tag,
+                  l1in, l1ina, l0tag, l1tag, dvalid,
                   tout, dout, douten, rddata, maxisSlave ) is
     variable v : RegType;
 --    variable n : integer range 0 to 2*ROW_SIZE-1;
@@ -399,7 +400,6 @@ begin
 --        v.cache(i).skip   := r.lskip;
 --        v.cache(i).mapd   := END_M; -- look for close
         v.cache(i).baddr  := encodeAddr( v.wraddr, k+imatch );
-        v.cache(i).tag    := l0tag;
         if r.cache(i).state /= EMPTY_S then
           v.cache(i).ovflow := '1';
         else
@@ -412,8 +412,10 @@ begin
     --
     if l1in = '1' then
       i := conv_integer(r.itrigger);
-      if l1ina = '1' and l1tag = v.cache(i).tag then
+      if l1ina = '1' then
         v.cache(i).trigd := ACCEPT_T;
+        v.cache(i).tag   := l1tag;
+        v.cache(i).valid := dvalid;  -- is there a better time to latch this?
       else
         v.cache(i).trigd := REJECT_T;
       end if;
@@ -472,13 +474,15 @@ begin
               q.first := '1';
               q.axisMaster.tValid := '1';
               q.axisMaster.tData(30 downto 0) :=
-                toSlv(ILV_G*(ROW_SIZE*r.cache(i).drows+r.cache(i).didxs),31);
+                toSlv(ILV_G*(ROW_SIZE*r.cache(i).drows+r.cache(i).didxs),30);
               
+              q.axisMaster.tData(30) := not r.cache(i).valid;
               q.axisMaster.tData(31) := r.cache(i).ovflow;
               q.axisMaster.tData( 47 downto  32) := toSlv(0,16);         -- boff,eoff
               q.axisMaster.tData( 55 downto  48) := toSlv(i,8);         -- buffer
               q.axisMaster.tData( 63 downto  56) := toSlv(ALG_ID_G,8);  -- stream
-              q.axisMaster.tData( 95 downto  64) := resize(r.cache(i).toffs,32);
+              q.axisMaster.tData( 79 downto  64) := resize(r.cache(i).toffs,16);
+              q.axisMaster.tData( 95 downto  80) := resize(r.cache(i).tag  ,16);
               q.axisMaster.tData(111 downto  96) := resize(r.cache(i).baddr,16);
               q.axisMaster.tData(127 downto 112) := resize(r.cache(i).eaddr,16);
               q.axisMaster.tKeep := work.AxiStreamPkg.genTKeep(16);

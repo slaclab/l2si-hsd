@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-07-28
+-- Last update: 2020-07-31
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -111,8 +111,6 @@ architecture mapping of ChipAdcEvent is
   signal afullCnt  : slv(31 downto 0);
   signal ql1in  : sl;
   signal ql1ina : sl;
-  signal shiftTmp : slv(31 downto 0);
-  signal shift  : slv(31 downto 0) := (others=>'0');
   signal start  : sl;
   signal clear : sl;
   signal l0tag : slv(4 downto 0);
@@ -129,15 +127,9 @@ architecture mapping of ChipAdcEvent is
 
   signal hdrValid  : sl;
   signal hdrRd     : sl;
-  
-  signal pllSync   : slv(31 downto 0);
-  signal pllSyncV  : sl;
   signal eventHdr  : slv(255 downto 0);
-
   signal noPayload : sl;
  
-  constant APPLY_SHIFT_C : boolean := false;
-
   constant NSTREAMS_C : integer := FEX_ALGORITHMS'length;
   constant NRAM_C     : integer := 4 * NSTREAMS_C;
   signal bramWr    : BRamWriteMasterArray(NRAM_C-1 downto 0);
@@ -171,11 +163,11 @@ begin  -- mapping
 
   --  overwrite header bytes 24-31
   noPayload             <= eventAxisMaster.tDest(0);
-  eventHdr              <= pllSync &
+  eventHdr              <= toSlv(0,32) &
                            toSlv(1,8) & toSlv(0,4) &
                            configA.samples(17 downto 4) & toSlv(0,6) &
                            eventAxisMaster.tData(191 downto 0);
-  hdrValid              <= eventAxisMaster.tValid and (pllSyncV or noPayload);
+  hdrValid              <= eventAxisMaster.tValid;
   eventAxisSlave.tReady <= hdrRd;
   eventAxisCtrl.pause   <= afull;
   eventAxisCtrl.overflow<= ilvoflow;
@@ -188,18 +180,6 @@ begin  -- mapping
     end generate;
   end generate;
   
-  U_PllSyncF : entity surf.FifoSync
-    generic map ( ADDR_WIDTH_G => 4,
-                  DATA_WIDTH_G => 32,
-                  FWFT_EN_G    => true )
-    port map ( rst    => dmaRst,
-               clk    => dmaClk,
-               wr_en  => start,
-               din    => shift,
-               rd_en  => hdrRd   ,
-               dout   => pllSync ,
-               valid  => pllSyncV );
-
   U_INTLV : entity work.QuadAdcInterleavePacked
     generic map ( BASE_ADDR_C    => BASE_ADDR_C,
                   AXIS_CONFIG_G  => CHN_AXIS_CONFIG_C,
@@ -209,8 +189,9 @@ begin  -- mapping
                rst             => dmaRst,
                clear           => clear,
                start           => start,
-               shift           => shift(3 downto 0),
-               din             => iadc          ,
+               shift           => x"0",
+               din             => iadc    ,
+               dvalid          => adcValid,
                l1in            => ql1in,
                l1ina           => ql1ina,
                l0tag           => l0tag,
@@ -272,7 +253,5 @@ begin  -- mapping
                start       => start,
                l0tag       => l0tag,
                l1tag       => l1tag );
-
-  shift(31) <= adcValid;
 
 end mapping;
