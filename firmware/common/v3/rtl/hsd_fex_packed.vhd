@@ -473,7 +473,7 @@ begin
               --
               q.first := '1';
               q.axisMaster.tValid := '1';
-              q.axisMaster.tData(30 downto 0) :=
+              q.axisMaster.tData(29 downto 0) :=
                 toSlv(ILV_G*(ROW_SIZE*r.cache(i).drows+r.cache(i).didxs),30);
               
               q.axisMaster.tData(30) := not r.cache(i).valid;
