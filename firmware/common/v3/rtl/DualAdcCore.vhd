@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-03-01
+-- Last update: 2020-07-31
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -187,7 +187,7 @@ begin
                  --
                  triggerClk          => evrClk,
                  triggerRst          => evrRst,
-                 triggerBus          => evrBus,
+                 triggerStrobe       => evrBus.strobe,
                  triggerData         => triggerData  (i),
                  -- DMA
                  dmaClk              => dmaClk,

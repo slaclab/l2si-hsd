@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2019-06-12
+-- Last update: 2020-08-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ architecture mapping of DSReg is
     fmcRst         : slv(1 downto 0);
     fbRst          : sl;
     fbPLLRst       : sl;
-    cacheSel       : slv(3 downto 0);
+    cacheSel       : slv(5 downto 0);
   end record;
   constant REG_INIT_C : RegType := (
     axilReadSlave  => AXI_LITE_READ_SLAVE_INIT_C,
@@ -98,8 +98,9 @@ architecture mapping of DSReg is
   signal r   : RegType := REG_INIT_C;
   signal rin : RegType;
 
-  signal cacheSel : slv(3 downto 0);
+  signal cacheSel : slv(5 downto 0);
   signal icache   : integer range 0 to 15;
+  signal istream  : integer range 0 to 3;
 
   signal cacheS       : CacheType;
   signal cacheV, cacheSV : slv(CACHETYPE_LEN_C-1 downto 0);
@@ -189,7 +190,7 @@ begin  -- mapping
     
     axilSlaveRegisterW(toSlv( 0,12), 0, v.irqEnable);
     axilSlaveRegisterR(toSlv( 4,12), sReg);
-    axilSlaveRegisterR(toSlv( 8,12), status.partitionAddr);
+--    axilSlaveRegisterR(toSlv( 8,12), status.partitionAddr);
 --    axilSlaveRegisterW(toSlv(12,12),  0, v.dmaFullThr);
     axilSlaveRegisterW(toSlv(16,12),  0, v.countReset);
 --    axilSlaveRegisterW(toSlv(16,12),  1, v.dmaHistEna);
@@ -212,12 +213,12 @@ begin  -- mapping
     axilSlaveRegisterW(toSlv(32,12),  0, v.config.prescale);
     axilSlaveRegisterW(toSlv(36,12),  0, v.config.offset);
     
-    axilSlaveRegisterR(toSlv(40,12), muxSlVectorArray(status.eventCount, 0));
-    axilSlaveRegisterR(toSlv(44,12), muxSlVectorArray(status.eventCount, 1));
+    axilSlaveRegisterR(toSlv(40,12), status.eventCount(0));
+    axilSlaveRegisterR(toSlv(44,12), status.eventCount(1));
     axilSlaveRegisterR(toSlv(48,12), status.dmaCtrlCount);
-    axilSlaveRegisterR(toSlv(52,12), muxSlVectorArray(status.eventCount, 2));
-    axilSlaveRegisterR(toSlv(56,12), muxSlVectorArray(status.eventCount, 3));
-    axilSlaveRegisterR(toSlv(60,12), muxSlVectorArray(status.eventCount, 4));
+    axilSlaveRegisterR(toSlv(52,12), status.eventCount(2));
+    axilSlaveRegisterR(toSlv(56,12), status.eventCount(3));
+    axilSlaveRegisterR(toSlv(60,12), status.eventCount(4));
 
     case cacheS.state is
       when EMPTY_S   => cacheS_state := x"0";
@@ -240,17 +241,17 @@ begin  -- mapping
     axilSlaveRegisterR(toSlv(72,12),  0, resize(cacheS.baddr,16) );
     axilSlaveRegisterR(toSlv(72,12), 16, resize(cacheS.eaddr,16) );
 
-    axilSlaveRegisterR(toSlv(76,12),  0, statusS.msgDelaySet );
-    axilSlaveRegisterR(toSlv(76,12), 16, statusS.msgDelayGet );
+    --axilSlaveRegisterR(toSlv(76,12),  0, statusS.msgDelaySet );
+    --axilSlaveRegisterR(toSlv(76,12), 16, statusS.msgDelayGet );
 
-    axilSlaveRegisterR(toSlv(80,12),  0, statusS.headerCntL0 );
-    axilSlaveRegisterR(toSlv(80,12), 24, statusS.headerCntOF );
+    --axilSlaveRegisterR(toSlv(80,12),  0, statusS.headerCntL0 );
+    --axilSlaveRegisterR(toSlv(80,12), 24, statusS.headerCntOF );
 
     axilSlaveRegisterW(toSlv(104,12), 0, v.config.localId );
-    axilSlaveRegisterR(toSlv(108,12), 0, statusS.upstreamId(0) );
-    for i in 0 to 3 loop
-      axilSlaveRegisterR(toSlv(112+4*i,12), 0, statusS.dnstreamId(i) );
-    end loop;
+    --axilSlaveRegisterR(toSlv(108,12), 0, statusS.upstreamId(0) );
+    --for i in 0 to 3 loop
+    --  axilSlaveRegisterR(toSlv(112+4*i,12), 0, statusS.dnstreamId(i) );
+    --end loop;
     
     axilSlaveDefault(AXI_RESP_OK_C); 
     
@@ -258,12 +259,13 @@ begin  -- mapping
   end process;
 
   U_ICache : entity surf.SynchronizerVector
-    generic map ( WIDTH_G => 4 )
+    generic map ( WIDTH_G => 6 )
     port map ( clk     => dmaClk,
                dataIn  => r.cacheSel,
                dataOut => cacheSel);
-  icache <= conv_integer(cacheSel);
-  cacheV <= cacheToSlv(status.eventCache(icache));
+  istream <= conv_integer(cacheSel(5 downto 4));
+  icache  <= conv_integer(cacheSel(3 downto 0));
+  cacheV  <= cacheToSlv(status.eventCache(istream)(icache));
   U_CacheS : entity surf.SynchronizerVector
     generic map ( WIDTH_G => cacheV'length )
     port map ( clk     => axiClk,

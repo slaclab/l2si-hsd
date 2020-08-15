@@ -154,7 +154,6 @@ signal adc_data         : bus128(3 downto 0);
 signal trigger          : std_logic;
 signal trigger_clk      : std_logic;
 signal trigger_cmd      : std_logic;
-signal sw_trigger      : std_logic;
 
 signal  phy_data_a      : std_logic_vector(127 downto 0);
 signal  phy_data_b      : std_logic_vector(127 downto 0);
@@ -408,29 +407,28 @@ U_TRGCLK : BUFG
   port map ( I => trigger,
              O => trigger_clk );
 
-pulse2pulse_sw_trigget_inst:
-entity surf.SynchronizerOneShot
-port map (
-  clk       => adc_clk,
-  rst       => rst,
-  dataIn    => trigger_cmd,
-  dataOut   => sw_trigger );
-
 -------------------------------------------------------------------------------------
 -- External Trigger
 -------------------------------------------------------------------------------------
-ext_trigger_inst0:
-entity work.ext_trigger
+ibufds_trig : ibufds
+generic map (
+  IOSTANDARD => "LVDS_25",
+  DIFF_TERM => TRUE
+)
 port map (
-    clk_in          => adc_clk,
-    ext_trigger_p   => ext_trigger_p,  -- external in
-    ext_trigger_n   => ext_trigger_n,  -- external in
-    sw_trigger      => sw_trigger,     -- software trigger in
-    trigger_select  => trigger_select, -- 0 = external, 1 = internal
-    ext_trigger     => trigger
+  i  => ext_trigger_p,
+  ib => ext_trigger_n,
+  o  => ext_trigger_buf
 );
 
-trigger_out <= trigger;
+trigger <= ext_trigger_buf when (trigger_select = "00") else
+           trigger_cmd;
+
+U_SyncTrigger : entity surf.SynchronizerOneShot
+  port map ( clk     => adc_clk,
+             rst     => rst,
+             dataIn  => trigger,
+             dataOut => trigger_out );
 
 
 ----------------------------------------------------------------------------------------------------

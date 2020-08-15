@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-07-28
+-- Last update: 2020-08-11
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -146,26 +146,26 @@ begin  -- mapping
     axiSlaveWaitTxn(axilEp, axilWriteMaster, axilReadMaster, v.axilWriteSlave, v.axilReadSlave);
     v.axilReadSlave.rdata := (others=>'0');
     
-    axiSlaveRegister (axilEp, toSlv( 0,AW), 0, v.irqEnable);
-    axiSlaveRegisterR(axilEp, toSlv( 4,AW), 0, sReg);
+    -- axiSlaveRegister (axilEp, toSlv( 0,AW), 0, v.irqEnable);
+    -- axiSlaveRegisterR(axilEp, toSlv( 4,AW), 0, sReg);
 
     axiSlaveRegister (axilEp, toSlv(16,AW),  0, v.countReset);
-    axiSlaveRegister (axilEp, toSlv(16,AW),  2, v.config.dmaTest);
+    -- axiSlaveRegister (axilEp, toSlv(16,AW),  2, v.config.dmaTest);
     axiSlaveRegister (axilEp, toSlv(16,AW),  3, v.adcSyncRst);
     axiSlaveRegister (axilEp, toSlv(16,AW),  4, v.dmaRst);
     axiSlaveRegister (axilEp, toSlv(16,AW),  5, v.fbRst);
     axiSlaveRegister (axilEp, toSlv(16,AW),  6, v.fbPLLRst);
-    axiSlaveRegister (axilEp, toSlv(16,AW),  8, v.config.trigShift);
+    -- axiSlaveRegister (axilEp, toSlv(16,AW),  8, v.config.trigShift);
     axiSlaveRegister (axilEp, toSlv(16,AW), 31, v.config.acqEnable);
-    axiSlaveRegister (axilEp, toSlv(20,AW),  0, v.config.rateSel);
-    axiSlaveRegister (axilEp, toSlv(20,AW), 13, v.config.destSel);
-    axiSlaveRegister (axilEp, toSlv(24,AW),  0, v.config.enable);
-    axiSlaveRegister (axilEp, toSlv(24,AW),  8, v.config.intlv);
-    axiSlaveRegister (axilEp, toSlv(24,AW), 16, v.config.partition);
-    axiSlaveRegister (axilEp, toSlv(24,AW), 20, v.config.inhibit);
+    -- axiSlaveRegister (axilEp, toSlv(20,AW),  0, v.config.rateSel);
+    -- axiSlaveRegister (axilEp, toSlv(20,AW), 13, v.config.destSel);
+    -- axiSlaveRegister (axilEp, toSlv(24,AW),  0, v.config.enable);
+    -- axiSlaveRegister (axilEp, toSlv(24,AW),  8, v.config.intlv);
+    -- axiSlaveRegister (axilEp, toSlv(24,AW), 16, v.config.partition);
+    -- axiSlaveRegister (axilEp, toSlv(24,AW), 20, v.config.inhibit);
     axiSlaveRegister (axilEp, toSlv(28,AW),  0, v.config.samples);
-    axiSlaveRegister (axilEp, toSlv(32,AW),  0, v.config.prescale);
-    axiSlaveRegister (axilEp, toSlv(36,AW),  0, v.config.offset);
+    -- axiSlaveRegister (axilEp, toSlv(32,AW),  0, v.config.prescale);
+    -- axiSlaveRegister (axilEp, toSlv(36,AW),  0, v.config.offset);
     
     axiSlaveRegisterR(axilEp, toSlv(40,AW), 0, status.eventCount(0));
     axiSlaveRegisterR(axilEp, toSlv(44,AW), 0, status.eventCount(1));

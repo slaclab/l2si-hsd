@@ -74,8 +74,8 @@ set_input_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -min -add_delay 
 set_input_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -max -add_delay 4.500 [get_ports ext_trigger_n[1]]
 set_input_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -min -add_delay 3.000 [get_ports fmc_to_cpld[1]]
 set_input_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -max -add_delay 4.500 [get_ports fmc_to_cpld[1]]
-set_input_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -min -add_delay 3.000 [get_ports front_io_fmc[1]]
-set_input_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -max -add_delay 4.500 [get_ports front_io_fmc[1]]
+#set_input_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -min -add_delay 3.000 [get_ports front_io_fmc[1]]
+#set_input_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -max -add_delay 4.500 [get_ports front_io_fmc[1]]
 
 ################################################################################
 # Output delay constraints
@@ -84,8 +84,8 @@ set_input_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -max
 #Misc
 set_output_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -min -add_delay 3.000 [get_ports fmc_to_cpld[1][*] ]
 set_output_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -max -add_delay 4.500 [get_ports fmc_to_cpld[1][*] ]
-set_output_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -min -add_delay 3.000 [get_ports front_io_fmc[1][*]]
-set_output_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -max -add_delay 4.500 [get_ports front_io_fmc[1][*]]
+#set_output_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -min -add_delay 3.000 [get_ports front_io_fmc[1][*]]
+#set_output_delay -clock [get_clocks VIRTUAL_axi_fmc126_clk125_1] -clock_fall -max -add_delay 4.500 [get_ports front_io_fmc[1][*]]
 set_output_delay -clock [get_clocks adr_p_1] -clock_fall -min -add_delay 3.000 [get_ports sync_from_fpga_n[1]]
 set_output_delay -clock [get_clocks adr_p_1] -clock_fall -max -add_delay 4.500 [get_ports sync_from_fpga_n[1]]
 set_output_delay -clock [get_clocks adr_p_1] -clock_fall -min -add_delay 3.000 [get_ports sync_from_fpga_p[1]]

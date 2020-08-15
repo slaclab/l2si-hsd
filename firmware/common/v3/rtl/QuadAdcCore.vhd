@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2019-08-31
+-- Last update: 2020-08-10
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -36,14 +36,15 @@ use surf.AxiLitePkg.all;
 use surf.AxiStreamPkg.all;
 
 library lcls_timing_core;
-use lcls_timing_core.TimingExtnPkg.all;
 use lcls_timing_core.TimingPkg.all;
 
 library l2si_core;
+use l2si_core.L2SiPkg.all;
 use l2si_core.XpmPkg.all;
-use l2si_core.EventPkg.all;
+use l2si_core.XpmExtensionPkg.all;
+
 use surf.SsiPkg.all;
-use l2si_core.XpmPkg.all;
+
 use work.FmcPkg.all;
 use work.QuadAdcPkg.all;
 
@@ -55,7 +56,7 @@ entity QuadAdcCore is
     SYNC_BITS_G : integer := 4;
     DMA_STREAM_CONFIG_G : AxiStreamConfigType;
     DMA_SIZE_G  : integer := 1;
-    BASE_ADDR_C : slv(31 downto 0) := (others=>'0') );
+    BASE_ADDR_C : Slv32Array(2 downto 0) := (others=>x"00000000") );
   port (
     -- AXI-Lite and IRQ Interface
     axiClk              : in  sl;
@@ -73,7 +74,6 @@ entity QuadAdcCore is
     evrClk              : in  sl;
     evrRst              : in  sl;
     evrBus              : in  TimingBusType;
-    exptBus             : in  ExptBusType;
 --    ready               : out sl;
     timingFbClk         : in  sl;
     timingFbRst         : in  sl;
@@ -122,58 +122,29 @@ architecture mapping of QuadAdcCore is
   signal eventSelQ           : slv      (NFMC_G-1 downto 0);
   signal rstCount            : sl;
 
-  signal histMaster          : AxiStreamMasterType;
-  signal histSlave           : AxiStreamSlaveType;
-  
   signal irqRequest          : sl;
 
   signal dmaFifoDepth        : slv( 9 downto 0);
 
---  signal dmaFullThr, dmaFullThrS : slv(23 downto 0) := (others=>'0');
-  signal dmaFullCnt          : slv(31 downto 0);
   signal dmaFull             : sl;  -- dmaClk domain
-  signal dmaFullS            : sl;  -- evrClk domain
-  signal dmaFullSS           : sl;  -- timingFbClk domain
-  signal dmaFullV            : slv(NPartitions-1 downto 0);
   
   signal idmaRst             : slv      (1 downto 0);
   signal dmaRstI             : Slv3Array(NFMC_G-1 downto 0) := (others=>(others=>'1'));
   signal dmaRstS             : slv      (NFMC_G-1 downto 0);
   signal dmaStrobe           : sl;
 
-  signal l1in, l1ina         : sl;
+  signal triggerData          : TriggerEventDataArray(NFMC_G-1 downto 0);
+  signal eventAxisMasters    : AxiStreamMasterArray(NFMC_G-1 downto 0);
+  signal eventAxisSlaves     : AxiStreamSlaveArray (NFMC_G-1 downto 0);
+  signal eventAxisCtrl       : AxiStreamCtrlArray  (NFMC_G-1 downto 0);
 
-  constant HIST_STREAM_CONFIG_C : AxiStreamConfigType := (
-    TSTRB_EN_C    => false,
-    TDATA_BYTES_C => 4,
-    TDEST_BITS_C  => 0,
-    TID_BITS_C    => 0,
-    TKEEP_MODE_C  => TKEEP_NORMAL_C,
-    TUSER_BITS_C  => 0,
-    TUSER_MODE_C  => TUSER_NONE_C );
-
-  signal timingHeader_prompt  : TimingHeaderType;
-  signal timingHeader_aligned : TimingHeaderType;
-  signal exptBus_aligned      : ExptBusType;
-  signal trigData             : XpmPartitionDataArray(NFMC_G-1 downto 0);
-  signal trigDataV            : slv             (NFMC_G-1 downto 0);
-  signal eventHdr             : EventHeaderArray(NFMC_G-1 downto 0);
   signal eventHdrD            : Slv192Array     (NFMC_G-1 downto 0);
   signal eventHdrV            : slv             (NFMC_G-1 downto 0);
   signal eventHdrRd           : slv             (NFMC_G-1 downto 0);
-  signal phdr                 : slv             (NFMC_G-1 downto 0);
   signal pmsg                 : slv             (NFMC_G-1 downto 0);
   signal rstFifo              : slv             (NFMC_G-1 downto 0);
-  signal wrFifoCnt            : Slv4Array       (NFMC_G-1 downto 0);
-  signal rdFifoCnt            : Slv4Array       (NFMC_G-1 downto 0);
-  signal fbPllRst             : sl;
-  signal fbPhyRst             : sl;
-
-  signal msgDelaySet          : Slv7Array (NPartitions-1 downto 0);
-  signal msgDelayGet          : Slv7Array (NFMC_G-1 downto 0);
-  signal cntL0                : Slv20Array(NFMC_G-1 downto 0);
-  signal cntOflow             : Slv8Array (NFMC_G-1 downto 0);
-
+  signal status_eventCount    : SlVectorArray(4 downto 0,31 downto 0);
+  
   signal phaseValue : Slv16Array(3 downto 0);
   signal phaseCount : Slv16Array(3 downto 0);
   
@@ -192,106 +163,68 @@ begin
   dmaRxIbMaster <= axisMaster;
   axisSlave     <= dmaRxIbSlave;
 
-  --U_FbReset : entity surf.RstSync
-  --  port map ( clk      => timingFbClk,
-  --             asyncRst => fbPhyRst,
-  --             syncRst  => fbReset );
+  U_TEM : entity l2si_core.TriggerEventManager
+    generic map ( EN_LCLS_I_TIMING_G             => not LCLSII_G,
+                  EN_LCLS_II_TIMING_G            => LCLSII_G,
+                  NUM_DETECTORS_G                => NFMC_G,
+                  TRIGGER_CLK_IS_TIMING_RX_CLK_G => true,
+                  AXIL_BASE_ADDR_G               => BASE_ADDR_C(2) )
+    port map (
+      timingRxClk => evrClk,
+      timingRxRst => evrRst,
+      timingBus   => evrBus,
+      timingMode  => ite(LCLSII_G,'1','0'),
 
-  U_TimingFb : entity l2si_core.XpmTimingFb
-    generic map ( DEBUG_G => true )
-    port map ( clk        => timingFbClk,
-               rst        => timingFbRst,
-               pllReset   => fbPllRst,
-               phyReset   => fbPhyRst,
-               id         => hsdTimingFbId(config.localId),
-               l1input    => (others=>XPM_L1_INPUT_INIT_C),
-               full       => dmaFullV,
-               phy        => timingFb );
+      -- Timing Tx Feedback
+      timingTxClk => timingFbClk,
+      timingTxRst => timingFbRst,
+      timingTxPhy => timingFb,
 
-  timingHeader_prompt.strobe    <= evrBus.strobe;
-  timingHeader_prompt.pulseId   <= evrBus.message.pulseId;
-  timingHeader_prompt.timeStamp <= evrBus.message.timeStamp;
-  U_Realign  : entity l2si_core.EventRealign
-    port map ( rst           => evrRst,
-               clk           => evrClk,
-               timingI       => timingHeader_prompt,
-               exptBusI      => exptBus,
-               timingO       => timingHeader_aligned,
-               exptBusO      => exptBus_aligned,
-               delay         => msgDelaySet );
-  
-  status.msgDelaySet <= msgDelaySet(conv_integer(configE.partition(0)));
-  
-  --dmaHistDump <= oneHz and dmaHistEnaS;
+      -- Triggers 
+      triggerClk  => evrClk,
+      triggerRst  => evrRst,
+      triggerData => triggerData,
 
-  --Sync_dmaHistDump : entity surf.SynchronizerOneShot
-  --  port map ( clk     => dmaClk,
-  --             dataIn  => dmaHistDump,
-  --             dataOut => dmaHistDumpS );
-
+      -- Output Streams
+      eventClk            => dmaClk,
+      eventRst            => adcRst,
+      eventTimingMessages => open,
+      eventAxisMasters    => eventAxisMasters,
+      eventAxisSlaves     => eventAxisSlaves,
+      eventAxisCtrl       => eventAxisCtrl,
+      clearReadout        => rstFifo,
+      
+      -- AXI-Lite
+      axilClk         => axiClk,
+      axilRst         => axiRst,
+      axilReadMaster  => axilReadMasters (2),
+      axilReadSlave   => axilReadSlaves  (2),
+      axilWriteMaster => axilWriteMasters(2),
+      axilWriteSlave  => axilWriteSlaves (2) );
+          
   GEN_FMC : for i in 0 to NFMC_G-1 generate
-
-    U_EventSel : entity l2si_core.EventHeaderCache
---      generic map ( DEBUG_G => false )
-      port map ( rst            => evrRst,
-                 wrclk          => evrClk,
-                 enable         => configE.acqEnable,
-                 partition      => configE.partition,   
-                 cacheenable    => configE.enable(i),
-                 timing_prompt  => timingHeader_prompt,
-                 expt_prompt    => exptBus,
-                 timing_aligned => timingHeader_aligned,
-                 expt_aligned   => exptBus_aligned,
-                 pdata          => trigData (i),
-                 pdataV         => trigDataV(i),
-                 cntWrFifo      => wrFifoCnt(i),
-                 rstFifo        => rstFifo  (i),
-                 msgDelay       => msgDelayGet(i),
-                 cntL0          => cntL0    (i),
-                 cntOflow       => cntOflow (i),
-                 debug          => debugS   (i),
-                 debugv         => debugSV  (i),
-                 --
-                 rdclk          => dmaClk,
-                 advance        => eventHdrRd(i),
-                 valid          => eventHdrV (i),
-                 pmsg           => pmsg      (i),
-                 phdr           => phdr      (i),
-                 cntRdFifo      => rdFifoCnt (i),
-                 hdrOut         => eventHdr  (i));
-
-    eventSelQ(i) <= eventSel(i) and not configE.inhibit;
-    eventHdrD(i) <= toSlv(eventHdr(i));
-
-    U_DebugS : entity surf.SynchronizerFifo
-      generic map ( DATA_WIDTH_G => 8,
-                    ADDR_WIDTH_G => 2 )
-      port map ( wr_clk          => dmaClk,
-                 din(6 downto 0) => debug (i)(6 downto 0),
-                 din(7)          => dmaFull,
-                 rd_clk          => evrClk,
-                 dout            => debugS(i),
-                 valid           => debugSV(i));
-
-    eventSel(i) <= trigData (i).l0a and trigDataV(i);
+    eventSel       (i) <= triggerData(i).l0Accept and triggerData(i).valid;
+    eventSelQ      (i) <= eventSel(i) and not configE.inhibit;
+    eventHdrD      (i) <= eventAxisMasters(i).tData(191 downto 0);
+    eventHdrV      (i) <= eventAxisMasters(i).tValid;
+    pmsg           (i) <= eventAxisMasters(i).tDest(0);
     
+    eventAxisSlaves(i).tReady   <= eventHdrRd(i);
+    eventAxisCtrl  (i).pause    <= dmaFull; -- full signal shared
+    eventAxisCtrl  (i).overflow <= '0';
+    eventAxisCtrl  (i).idle     <= '0';
   end generate;
   
-  trigSlot     <= trigDataV(0);
-  l1in         <= trigData (0).l1e and trigDataV(0);
---  l1ina        <= trigData (0).l1a;
-  l1ina        <= '1';
-  status.msgDelayGet <= msgDelayGet(0);
-  status.headerCntL0 <= cntL0(0);
-  status.headerCntOF <= cntOflow(0);
-  
+  trigSlot     <= triggerData(0).valid;
+  trigOut      <= eventSelQ  (0);
+
   U_EventDma : entity work.QuadAdcEvent
     generic map ( TPD_G               => TPD_G,
                   FIFO_ADDR_WIDTH_C   => FIFO_ADDR_WIDTH_C,
                   NFMC_G              => NFMC_G,
                   SYNC_BITS_G         => SYNC_BITS_G,
                   DMA_STREAM_CONFIG_G => DMA_STREAM_CONFIG_G,
-                  BASE_ADDR_C         => BASE_ADDR_C )
+                  BASE_ADDR_C         => BASE_ADDR_C(1) )
     port map (    axilClk         => axiClk,
                   axilRst         => axiRst,
                   axilReadMaster  => axilReadMasters (1),
@@ -299,10 +232,9 @@ begin
                   axilWriteMaster => axilWriteMasters(1),
                   axilWriteSlave  => axilWriteSlaves (1),
                   --
-                  eventClk   => evrClk,
-                  trigArm    => eventSelQ(0),
-                  l1in       => l1in,
-                  l1ina      => l1ina,
+                  eventClk    => evrClk,
+                  trigArm     => eventSelQ(0),
+                  triggerData => triggerData(0),
                   --
                   adcClk     => adcClk,
                   adcRst     => adcRst,
@@ -317,12 +249,10 @@ begin
                   noPayload     => pmsg,
                   eventHeaderRd => eventHdrRd,
                   rstFifo    => rstFifo(0),
-                  --dmaFullThr => dmaFullThrS(FIFO_ADDR_WIDTH_C-1 downto 0),
                   dmaFullS   => dmaFull,
-                  dmaFullCnt => dmaFullCnt,
                   dmaMaster  => axisMaster,
                   dmaSlave   => axisSlave ,
-                  status     => status.eventCache,
+                  status     => status.eventCache(0),
                   debug      => debug );
 
   Sync_EvtCount : entity surf.SyncStatusVector
@@ -335,12 +265,16 @@ begin
                   statusIn(0)  => eventSel(0),
                   cntRstIn     => rstCount,
                   rollOverEnIn => (others=>'1'),
-                  cntOut       => status.eventCount,
+                  cntOut       => status_eventCount,
                   wrClk        => evrClk,
                   wrRst        => '0',
                   rdClk        => axiClk,
                   rdRst        => axiRst );
 
+  GEN_EVENTCOUNT : for i in 4 downto 0 generate
+    status.eventCount(i) <= muxSlVectorArray(status_eventCount,i);
+  end generate;
+  
   U_DSReg : entity work.DSReg
     generic map ( TPD_G               => TPD_G )
     port map (    axiClk              => axiClk,
@@ -352,12 +286,10 @@ begin
                   -- configuration
                   irqEnable           => open      ,
                   config              => config    ,
---                  dmaFullThr          => dmaFullThr,
-                  --dmaHistEna          => dmaHistEna,
                   adcSyncRst          => adcSyncRst,
                   fmcRst              => idmaRst   ,
-                  fbRst               => fbPhyRst  ,
-                  fbPLLRst            => fbPllRst  ,
+                  --fbRst               => fbPhyRst  ,
+                  --fbPLLRst            => fbPllRst  ,
                   -- status
                   irqReq              => irqRequest   ,
                   rstCount            => rstCount     ,
@@ -368,7 +300,6 @@ begin
   vConfig <= toSlv       (config);
   configE <= toQadcConfig(vConfigE);
   configA <= toQadcConfig(vConfigA);
-  configF <= toQadcConfig(vConfigF);
   U_ConfigE : entity surf.SynchronizerVector
     generic map ( WIDTH_G => QADC_CONFIG_TYPE_LEN_C )
     port map (    clk     => evrClk,
@@ -381,71 +312,6 @@ begin
                   rst     => adcRst,
                   dataIn  => vConfig,
                   dataOut => vConfigA );
-  U_ConfigF : entity surf.SynchronizerVector
-    generic map ( WIDTH_G => QADC_CONFIG_TYPE_LEN_C )
-    port map (    clk     => timingFbClk,
-                  rst     => timingFbRst,
-                  dataIn  => vConfig,
-                  dataOut => vConfigF );
-
-  --Sync_dmaFullThr : entity surf.SynchronizerVector
-  --  generic map ( TPD_G   => TPD_G,
-  --                WIDTH_G => 24 )
-  --  port map (    clk     => dmaClk,
-  --                rst     => idmaRst,
-  --                dataIn  => dmaFullThr,
-  --                dataOut => dmaFullThrS );
-
-  Sync_partAddr : entity surf.SynchronizerVector
-    generic map ( TPD_G   => TPD_G,
-                  WIDTH_G => status.partitionAddr'length )
-    port map  ( clk     => axiClk,
-                dataIn  => paddr,
-                dataOut => status.partitionAddr );
-  
-  --Sync_dmaEnable : entity surf.Synchronizer
-  --  generic map ( TPD_G   => TPD_G )
-  --  port map (    clk     => evrClk,
-  --                rst     => evrRst,
-  --                dataIn  => dmaHistEna,
-  --                dataOut => dmaHistEnaS );
-
-  seq: process (evrClk) is
-  begin
-    if rising_edge(evrClk) then
-      trigOut <= eventSelQ(0) ;
-      if (exptBus.valid = '1' and evrBus.strobe = '1' and
-          exptBus.message.partitionAddr(28)='1') then
-        paddr <= exptBus.message.partitionAddr;
-      end if;
-    end if;
-  end process seq;
-
-  Sync_dmaFullS : entity surf.Synchronizer
-    port map ( clk     => evrClk,
-               dataIn  => dmaFull,
-               dataOut => dmaFullS );
-
-  Sync_dmaFullSS : entity surf.Synchronizer
-    port map ( clk     => timingFbClk,
-               dataIn  => dmaFull,
-               dataOut => dmaFullSS );
-
-  process (timingFbClk) is
-  begin
-    if rising_edge(timingFbClk) then
-      dmaFullV <= (others=>'0');
-      dmaFullV(conv_integer(configF.partition(0))) <= dmaFullSS;
-    end if;
-  end process;
-                      
-  Sync_dmaCtrlCount : entity surf.SynchronizerFifo
-    generic map ( TPD_G        => TPD_G,
-                  DATA_WIDTH_G => 32 )
-    port map    ( wr_clk       => dmaClk,
-                  din          => dmaFullCnt,
-                  rd_clk       => axiClk,
-                  dout         => status.dmaCtrlCount );
 
   --
   --  Synchronize reset to timing strobe to fix phase for gearbox
@@ -509,7 +375,7 @@ begin
                count1     => phaseCount(3),
                valid      => open );
   
-  comb : process ( axiRst, r, wrFifoCnt, rdFifoCnt,
+  comb : process ( axiRst, r,
                    phaseValue, phaseCount, 
                    axilWriteMasters(2), axilReadMasters(2) ) is
     variable v  : RegType;
@@ -520,11 +386,6 @@ begin
     axiSlaveWaitTxn( ep,
                      axilWriteMasters(2), axilReadMasters(2),
                      v.axilWriteSlave, v.axilReadSlave );
-
-    for i in 0 to NFMC_G-1 loop
-      axiSlaveRegisterR ( ep, toSlv(i*8+0,8), 0, wrFifoCnt(i) );
-      axiSlaveRegisterR ( ep, toSlv(i*8+4,8), 0, rdFifoCnt(i) );
-    end loop;
 
     for i in 0 to 3 loop
       axiSlaveRegisterR( ep, toSlv(32+4*i,8), 0, phaseValue(i) );

@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2019-08-31
+-- Last update: 2020-08-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -42,6 +42,10 @@ use work.QuadAdcPkg.all;
 use work.FexAlgPkg.all;
 use work.FmcPkg.all;
 
+library l2si_core;
+use l2si_core.L2SiPkg.all;
+use l2si_core.XpmExtensionPkg.all;
+
 entity QuadAdcEvent is
   generic (
     TPD_G             : time    := 1 ns;
@@ -58,10 +62,9 @@ entity QuadAdcEvent is
     axilWriteMaster :  in AxiLiteWriteMasterType;
     axilWriteSlave  : out AxiLiteWriteSlaveType;
     --
-    eventClk   :  in sl;
-    trigArm    :  in sl;
-    l1in       :  in sl;
-    l1ina      :  in sl;
+    eventClk    :  in sl;
+    trigArm     :  in sl;
+    triggerData :  in TriggerEventDataType;
     --
     adcClk     :  in sl;
     adcRst     :  in sl;
@@ -112,6 +115,8 @@ architecture mapping of QuadAdcEvent is
   signal afullCnt  : slv(31 downto 0);
   signal ql1in  : sl;
   signal ql1ina : sl;
+  signal sl0tag : slv(4 downto 0);
+  signal sl1tag : slv(4 downto 0);
   signal shift  : slv(31 downto 0);
   signal clear  : sl;
   signal start  : sl;
@@ -124,7 +129,6 @@ architecture mapping of QuadAdcEvent is
   signal ilvmasters  : AxiStreamMasterArray(NFMC_G-1 downto 0) := (others=>AXI_STREAM_MASTER_INIT_C);
   signal ilvslaves   : AxiStreamSlaveArray (NFMC_G-1 downto 0) := (others=>AXI_STREAM_SLAVE_INIT_C);
   signal ilvafull       : slv(NFMC_G-1 downto 0);
-  signal ilvfull        : slv(NFMC_G-1 downto 0);
 
   signal hdrValid  : slv(NFMC_G-1 downto 0);
   signal hdrRd     : slv(NFMC_G-1 downto 0);
@@ -133,10 +137,6 @@ architecture mapping of QuadAdcEvent is
   signal pllSyncV  : slv        (NFMC_G-1 downto 0);
   signal eventHdr  : Slv256Array(NFMC_G-1 downto 0);
 
-  signal l1inacc, sl1inacc : sl;
-  signal l1inrej, sl1inrej : sl;
-  signal sl1in, sl1ina : sl;
-  
   constant APPLY_SHIFT_C : boolean := false;
   constant NAXIL_C    : integer := NFMC_G;
   
@@ -147,13 +147,13 @@ architecture mapping of QuadAdcEvent is
 
   constant AXIL_XBAR_CONFIG_C : AxiLiteCrossbarMasterConfigArray(NAXIL_C-1 downto 0) := genAxiLiteConfig(NAXIL_C, BASE_ADDR_C, 15, 12);
 
-  constant NSTREAMS_C : integer := FEX_ALGORITHMS(0)'length;
+  constant NSTREAMS_C : integer := FEX_ALGORITHMS'length;
   constant NRAM_C     : integer := 4 * NFMC_G * NSTREAMS_C;
   signal bramWr    : BRamWriteMasterArray(NRAM_C-1 downto 0);
   signal bramRd    : BRamReadMasterArray (NRAM_C-1 downto 0);
   signal bRamSl    : BRamReadSlaveArray  (NRAM_C-1 downto 0);
 
-  signal cacheStatus : CacheStatusArray(NFMC_G-1 downto 0);
+  signal cacheStatus : CacheStatusArray(NFMC_G*MAX_STREAMS_C-1 downto 0);
   signal acqEnable   : slv(NFMC_G-1 downto 0);
   
 begin  -- mapping
@@ -176,27 +176,6 @@ begin  -- mapping
                mAxiReadSlaves      => mAxilReadSlaves,
                mAxiWriteMasters    => mAxilWriteMasters,
                mAxiWriteSlaves     => mAxilWriteSlaves );
-               
-  process ( eventClk ) is
-  begin
-    if rising_edge(eventClk) then
-      l1inacc <= l1in and l1ina;
-      l1inrej <= l1in and not l1ina;
-    end if;
-  end process;
-
-  U_L1INACC : entity surf.SynchronizerOneShot
-    port map ( clk     => dmaClk,
-               dataIn  => l1inacc,
-               dataOut => sl1inacc );
-
-  U_L1INREJ : entity surf.SynchronizerOneShot
-    port map ( clk      => dmaClk,
-               dataIn   => l1inrej,
-               dataOut  => sl1inrej );
-
-  sl1in  <= sl1inacc or sl1inrej;
-  sl1ina <= sl1inacc; 
 
 --      This is the large buffer.
   GEN_RAM : for i in 0 to NFMC_G-1 generate
@@ -252,7 +231,7 @@ begin  -- mapping
       generic map ( BASE_ADDR_C    => AXIL_XBAR_CONFIG_C(i).baseAddr,
                     AXIS_CONFIG_G  => CHN_AXIS_CONFIG_C,
                     IFMC_G         => i,
-                    ALGORITHM_G    => FEX_ALGORITHMS(i),
+                    ALGORITHM_G    => FEX_ALGORITHMS,
                     DEBUG_G        => false )  
       port map ( clk             => dmaClk,
                  rst             => dmaRst,
@@ -260,13 +239,15 @@ begin  -- mapping
                  start           => start,
                  shift           => shift(3 downto 0),
                  din             => iadc          (i),
+                 dvalid          => '1',
+                 l0tag           => sl0tag,
+                 l1tag           => sl1tag,
                  l1in            => ql1in,
                  l1ina           => ql1ina,
                  l1a             => open,
                  l1v             => open,
                  almost_full     => ilvafull      (i),
-                 full            => ilvfull       (i),
-                 status          => cacheStatus   (i),
+                 status          => cacheStatus   ((i+1)*MAX_STREAMS_C-1 downto i*MAX_STREAMS_C),
                  debug           => debug         (i),
                  axisMaster      => ilvmasters    (i),
                  axisSlave       => ilvslaves     (i),
@@ -305,13 +286,15 @@ begin  -- mapping
   
   U_Trigger : entity work.QuadAdcTrigger
     generic map ( NCHAN_C => NFMC_G )
-    port map ( clk       => dmaClk,
+    port map ( triggerClk  => eventClk,
+               triggerRst  => '0',
+               triggerData => triggerData,
+               --
+               clk       => dmaClk,
                rst       => dmaRst,
                trigIn    => trigIn,  
                afullIn   => ilvafull,
                enable    => acqEnable,
-               l1in      => sl1in,
-               l1ina     => sl1ina,
                --
                afullOut  => afull,
                afullCnt  => afullCnt,
@@ -319,7 +302,8 @@ begin  -- mapping
                ql1ina    => ql1ina,
                shift     => shift,
                clear     => clear,
-               start     => start );
-
+               start     => start,
+               l0tag     => sl0tag,
+               l1tag     => sl1tag );
 
 end mapping;

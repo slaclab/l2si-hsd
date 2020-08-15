@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-07-28
+-- Last update: 2020-08-11
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -63,8 +63,10 @@ entity ChipAdcCore is
     --
     triggerClk          : in  sl;
     triggerRst          : in  sl;
-    triggerBus          : in  TimingBusType;
+    triggerStrobe       : in  sl;
     triggerData         : in  TriggerEventDataType;
+    enabled             : out sl;
+    swtrig              : out sl;
     -- DMA
     dmaClk              : in  sl;
     dmaRst              : out sl;
@@ -135,7 +137,8 @@ begin
 
   dmaRst             <= dmaRstS;
   eventAxisSlave     <= eventAxisSlaveTmp;
-
+  enabled            <= configA.acqEnable;
+  
   --------------------------
   -- AXI-Lite: Crossbar Core
   --------------------------
@@ -204,7 +207,7 @@ begin
                   -- configuration
                   irqEnable           => open      ,
                   config              => config    ,
-                  adcSyncRst          => open      ,
+                  adcSyncRst          => swtrig    ,
                   dmaRst              => idmaRst   ,
                   fbRst               => fbPhyRst  ,
                   fbPLLRst            => fbPllRst  ,
@@ -237,7 +240,7 @@ begin
   --
   Sync_dmaStrobe : entity surf.SynchronizerOneShot
     port map ( clk     => dmaClk,
-               dataIn  => triggerBus.strobe,
+               dataIn  => triggerStrobe,
                dataOut => dmaStrobe );
 
   Sync_dmaRst : process (dmaClk) is
@@ -266,12 +269,12 @@ begin
                asyncRst => rstCount,
                syncRst  => rstCountSyncD );
   
-  comb_t : process(triggerRst, rstCountSyncT, r_t, triggerBus, triggerData, eventAxisSlaveTmp, eventAxisMaster) is
+  comb_t : process(triggerRst, rstCountSyncT, r_t, triggerStrobe, triggerData, eventAxisSlaveTmp, eventAxisMaster) is
     variable v : CountRegType;
   begin
     v := r_t;
 
-    if triggerBus.strobe = '1' then
+    if triggerStrobe = '1' then
       v.count(0) := r_t.count(0) + 1;
     end if;
 

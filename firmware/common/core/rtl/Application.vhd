@@ -12,7 +12,6 @@ use surf.AxiLitePkg.all;
 use surf.AxiStreamPkg.all;
 
 library lcls_timing_core;
-use lcls_timing_core.TimingExtnPkg.all;
 use lcls_timing_core.TimingPkg.all;
 use work.FmcPkg.all;
 use work.QuadAdcPkg.all;
@@ -29,6 +28,7 @@ entity Application is
   generic (
      VERSION_625MHz : boolean := FALSE;
      LCLSII_G       : boolean := TRUE;
+     BASE_ADDR_G    : slv(31 downto 0) := (others=>'0');
      NFMC_G         : integer := 1;
      DMA_SIZE_G     : integer := 1;
      DMA_STREAM_CONFIG_G : AxiStreamConfigType );
@@ -61,7 +61,6 @@ entity Application is
     evrClk              : in  sl;
     evrRst              : in  sl;
     evrBus              : in  TimingBusType;
-    exptBus             : in  ExptBusType;
 --    ready               : out sl );
     timingFbClk         : in  sl;
     timingFbRst         : in  sl;
@@ -77,31 +76,31 @@ architecture rtl of Application is
   constant NUM_AXI_MASTERS_C : integer := 7;
   constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(NUM_AXI_MASTERS_C-1 downto 0) := (
     0    => (
-      baseAddr        => x"00080000",
+      baseAddr        => BASE_ADDR_G+x"0000_0000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     1    => (
-      baseAddr        => x"00080800",
+      baseAddr        => BASE_ADDR_G+x"0000_0800",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     2    => (
-      baseAddr        => x"00081000",
+      baseAddr        => BASE_ADDR_G+x"0000_1000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     3    => (
-      baseAddr        => x"00081800",
+      baseAddr        => BASE_ADDR_G+x"0000_1800",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     4    => (
-      baseAddr        => x"00082000",
+      baseAddr        => BASE_ADDR_G+x"0000_2000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     5    => (
-      baseAddr        => x"00082800",
+      baseAddr        => BASE_ADDR_G+x"0000_2800",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     6    => (
-      baseAddr        => x"00088000",
+      baseAddr        => BASE_ADDR_G+x"0000_8000",
       addrBits        => 15,
       connectivity    => x"FFFF") );
   signal mAxilWriteMasters : AxiLiteWriteMasterArray(NUM_AXI_MASTERS_C-1 downto 0);
@@ -120,7 +119,7 @@ architecture rtl of Application is
   signal locked            : sl;
   signal phyClk            : slv(NFMC_G-1 downto 0);
   signal idmaClk           : sl;
-  signal idmaRst           : sl := '0';
+  signal idmaRst           : slv(NFMC_G-1 downto 0);
   --signal mmcm_clk          : slv(2 downto 0);
   --signal mmcm_rst          : slv(2 downto 0);
   signal ddrClk            : sl;
@@ -156,7 +155,7 @@ architecture rtl of Application is
 begin  -- rtl
 
   dmaClk <= idmaClk;
-  dmaRst <= idmaRst;
+  dmaRst <= idmaRst(0);
 
   calClkEnN <= not calClkEn;
   
@@ -250,7 +249,7 @@ begin  -- rtl
                CLKDIV            => adcClk,                            -- Slow clock driven by BUFR
                D                 => adcSin,
                Q                 => adcS,
-               RST               => idmaRst,                           -- 1-bit Asynchronous reset only.
+               RST               => idmaRst(0),                           -- 1-bit Asynchronous reset only.
                FIFO_RD_CLK       => '0',
                FIFO_RD_EN        => '0',
                FIFO_EMPTY        => open,
@@ -346,7 +345,9 @@ begin  -- rtl
   U_Core : entity work.QuadAdcCore
     generic map ( NFMC_G      => NFMC_G,
                   SYNC_BITS_G => SYNC_BITS,
-                  BASE_ADDR_C => AXI_CROSSBAR_MASTERS_CONFIG_C(6).baseAddr,
+                  BASE_ADDR_C => (AXI_CROSSBAR_MASTERS_CONFIG_C(5).baseAddr,
+                                  AXI_CROSSBAR_MASTERS_CONFIG_C(6).baseAddr,
+                                  AXI_CROSSBAR_MASTERS_CONFIG_C(0).baseAddr),
                   DMA_SIZE_G  => DMA_SIZE_G,
                   DMA_STREAM_CONFIG_G => DMA_STREAM_CONFIG_G )
     port map (
@@ -358,14 +359,13 @@ begin  -- rtl
       axilReadSlaves      => cAxilReadSlaves  ,
       -- DMA
       dmaClk              => idmaClk,
-      dmaRst(0)           => idmaRst,
+      dmaRst              => idmaRst,
       dmaRxIbMaster       => dmaRxIbMaster,
       dmaRxIbSlave        => dmaRxIbSlave ,
       -- EVR Ports
       evrClk              => evrClk,
       evrRst              => evrRst,
       evrBus              => evrBus,
-      exptBus             => exptBus,
 --      ready               => ready,
       timingFbClk         => timingFbClk,
       timingFbRst         => timingFbRst,
