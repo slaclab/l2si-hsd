@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-08-09
+-- Last update: 2020-09-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -38,7 +38,8 @@ use l2si_core.L2SiPkg.all;
 use l2si_core.XpmExtensionPkg.all;
 
 entity QuadAdcTrigger is
-  generic ( NCHAN_C : integer := 1 );
+  generic ( NCHAN_C  : integer := 1;
+            GEN_L1_G : boolean := true );
   port ( triggerClk  : in  sl;
          triggerRst  : in  sl;
          triggerData : in  TriggerEventDataType;
@@ -102,8 +103,32 @@ architecture mapping of QuadAdcTrigger is
   signal triggerDataValidSync : sl;
   signal triggerDataSync      : TriggerEventDataType;
 
+  constant DEBUG_C : boolean := true;
+
+  component ila_0
+    port ( clk     : in sl;
+           probe0  : in slv(255 downto 0) );
+  end component;
+  
 begin
 
+  GEN_DEBUG : if DEBUG_C generate
+    U_ILA : ila_0
+      port map ( clk   => clk,
+                 probe0(0) => rst,
+                 probe0(8 downto 1) => trigIn,
+                 probe0(10 downto 9) => afullIn,
+                 probe0(12 downto 11) => enable,
+                 probe0(13) => triggerDataValidSync,
+                 probe0(14) => triggerDataSync.valid,
+                 probe0(15) => triggerDataSync.l0Accept,
+                 probe0(16) => r.clear,
+                 probe0(17) => r.start,
+                 probe0(22 downto 18) => r.l1in,
+                 probe0(27 downto 23) => r.l1ina,
+                 probe0(255 downto 28) => (others=>'0') );
+  end generate;
+                 
   afullOut  <= r.afull;
   afullCnt  <= r.afullcnt;
   ql1in     <= r.l1in (0);
@@ -144,11 +169,16 @@ begin
       v.afullcnt := r.afullcnt+1;
     end if;
 
-    if triggerDataValidSync='1' and triggerDataSync.valid='1' then
+    if (triggerDataValidSync='1' and triggerDataSync.valid='1') then
       l0ina := triggerDataSync.l0Accept;
-      l1in  := triggerDataSync.l1Expect;
-      l1ina := triggerDataSync.l1Expect and
-               triggerDataSync.l1Accept;
+      if (GEN_L1_G=true) then
+        l1in  := l0ina;
+        l1ina := l0ina;
+      else
+        l1in  := triggerDataSync.l1Expect;
+        l1ina := triggerDataSync.l1Expect and
+                 triggerDataSync.l1Accept;
+      end if;
     else
       l0ina := '0';
       l1in  := '0';

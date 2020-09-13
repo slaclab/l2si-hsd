@@ -143,13 +143,6 @@ architecture rtl of hsd_dualv3 is
   signal regClk, regRst : sl;
   signal tmpReg         : Slv32Array(0 downto 0);
 
-  constant NUM_AXI_MASTERS_C : integer := 2;
-  constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(NUM_AXI_MASTERS_C-1 downto 0) := genAxiLiteConfig(2, x"00080000", 19, 16);
-  signal axilReadMasters  : AxiLiteReadMasterArray (NUM_AXI_MASTERS_C-1 downto 0);
-  signal axilReadSlaves   : AxiLiteReadSlaveArray  (NUM_AXI_MASTERS_C-1 downto 0);
-  signal axilWriteMasters : AxiLiteWriteMasterArray(NUM_AXI_MASTERS_C-1 downto 0);
-  signal axilWriteSlaves  : AxiLiteWriteSlaveArray (NUM_AXI_MASTERS_C-1 downto 0);
-
   signal timingRefClk     : sl;
   signal timingRefClkCopy : sl;
   signal timingRefClkGt   : sl;
@@ -218,7 +211,9 @@ begin  -- rtl
                   BUILD_INFO_G         => BUILD_INFO_G,
                   DEVICE_MAP_G         => DEVICE_MAP_C,
                   TIMING_CORE_G        => "LCLSI" )
-   port map (  -- DMA Interfaces
+    port map ( sysClk         => regClk,
+               sysRst         => regRst,
+               -- DMA Interfaces
                dmaClk         => dmaClk,
                dmaRst         => dmaRst,
                dmaObMasters   => open,
@@ -258,27 +253,6 @@ begin  -- rtl
                pciRxN         => pciRxN,
                pciTxP         => pciTxP,
                pciTxN         => pciTxN );
-
-    --------------------------
-  -- AXI-Lite: Crossbar Core
-  --------------------------
-  U_XBAR : entity surf.AxiLiteCrossbar
-    generic map (
-      DEC_ERROR_RESP_G   => AXI_RESP_OK_C,
-      NUM_SLAVE_SLOTS_G  => 1,
-      NUM_MASTER_SLOTS_G => NUM_AXI_MASTERS_C,
-      MASTERS_CONFIG_G   => AXI_CROSSBAR_MASTERS_CONFIG_C)
-    port map (
-      axiClk           => regClk,
-      axiClkRst        => regRst,
-      sAxiWriteMasters(0) => regWriteMaster,
-      sAxiWriteSlaves (0) => regWriteSlave,
-      sAxiReadMasters (0) => regReadMaster,
-      sAxiReadSlaves  (0) => regReadSlave,
-      mAxiWriteMasters => axilWriteMasters,
-      mAxiWriteSlaves  => axilWriteSlaves,
-      mAxiReadMasters  => axilReadMasters,
-      mAxiReadSlaves   => axilReadSlaves);
 
   GEN_ADCINP : for i in 0 to NFMC_C-1 generate
     adcInput(0+4*i).clkp <= adr_p(i);
@@ -323,10 +297,10 @@ begin  -- rtl
       --
       axiClk              => regClk,
       axiRst              => regRst,
-      axilWriteMaster     => axilWriteMasters(0),
-      axilWriteSlave      => axilWriteSlaves (0),
-      axilReadMaster      => axilReadMasters (0),
-      axilReadSlave       => axilReadSlaves  (0),
+      axilWriteMaster     => regWriteMaster,
+      axilWriteSlave      => regWriteSlave ,
+      axilReadMaster      => regReadMaster ,
+      axilReadSlave       => regReadSlave  ,
       -- DMA
       dmaClk              => dmaClk,
       dmaRst              => dmaRst,

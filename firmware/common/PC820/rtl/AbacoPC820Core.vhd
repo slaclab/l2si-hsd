@@ -53,10 +53,12 @@ entity AbacoPC820Core is
    port (
       ------------------------
       --  Top Level Interfaces
-      ------------------------
+     ------------------------
+     sysClk          : out sl;
+     sysRst          : out sl;
       -- DMA Interfaces  (dmaClk domain)
-      dmaClk          : out sl;
-      dmaRst          : out sl;
+      dmaClk          : in  sl;
+      dmaRst          : in  sl;
 --      dmaBuffGrpPause : out slv(7 downto 0);
       dmaObMasters    : out AxiStreamMasterArray(DMA_SIZE_G-1 downto 0);
       dmaObSlaves     : in  AxiStreamSlaveArray(DMA_SIZE_G-1 downto 0);
@@ -185,15 +187,15 @@ architecture mapping of AbacoPC820Core is
 
 begin
 
-   dmaClk <= sysClock;
-
+   sysClk <= sysClock;
+   
    U_Rst : entity surf.RstPipeline
       generic map (
          TPD_G => TPD_G)
       port map (
          clk    => sysClock,
          rstIn  => systemReset,
-         rstOut => dmaRst);
+         rstOut => sysRst);
 
    systemReset <= sysReset or cardReset;
 
@@ -253,7 +255,8 @@ begin
          BOOT_PROM_G          => "NONE",
          DRIVER_TYPE_ID_G     => DRIVER_TYPE_ID_G,
          DMA_AXIS_CONFIG_G    => DMA_AXIS_CONFIG_G,
-         DMA_SIZE_G           => DMA_SIZE_G)
+         DMA_SIZE_G           => DMA_SIZE_G,
+         EN_XVC_G             => false )
       port map (
          -- AXI4 Interfaces
          axiClk              => sysClock,
@@ -457,8 +460,9 @@ begin
      U_TimingGth : entity lcls_timing_core.TimingGtCoreWrapper
        generic map (
          EXTREF_G          => true,  -- because Si5338 can't generate 371MHz
-         AXIL_BASE_ADDR_G  => GTH_ADDR_C )
---         DRP_ADDR_OFFSET_G => x"00000800" )
+         AXIL_BASE_ADDR_G  => GTH_ADDR_C,
+         ADDR_BITS_G       => 11,
+         GTH_DRP_OFFSET_G  => x"00000800" )
        port map (
          axilClk         => sysClock,
          axilRst         => sysReset,
@@ -502,7 +506,7 @@ begin
 --         PROG_DELAY_G      => true,
          AXIL_BASE_ADDR_G  => TIM_ADDR_C,
 --         AXIL_RINGB        => true,
-         USE_TPGMINI_G     => false )
+         USE_TPGMINI_G     => true )
       port map (
          gtTxUsrClk      => txUsrClk,
          gtTxUsrRst      => txUsrRst,

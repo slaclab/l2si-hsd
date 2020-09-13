@@ -241,7 +241,28 @@ architecture mapping of AxiPcieReg is
    signal appResetSync : sl;
    signal appClkFreq   : slv(31 downto 0);
 
+   component ila_0
+     port ( clk  : in sl;
+            probe0 : in slv(255 downto 0) );
+   end component;
+   
 begin
+
+  U_ILA : ila_0
+    port map ( clk       => axiClk,
+               probe0(0) => axilWriteMaster.awvalid,
+               probe0(1) => axilReadMaster .arvalid,
+               probe0(2) => axilWriteMaster.wvalid,
+               probe0(3) => axilReadSlave  .rvalid,
+               probe0(35 downto  4) => axilWriteMaster.awaddr,
+               probe0(67 downto 36) => axilReadMaster .araddr,
+               probe0(68) => mAxilWriteMaster.awvalid,
+               probe0(69) => mAxilReadMaster .arvalid,
+               probe0(70) => mAxilWriteMaster.wvalid,
+               probe0(71) => mAxilReadSlave  .rvalid,
+               probe0(103 downto 72) => mAxilWriteMaster.awaddr,
+               probe0(135 downto 104) => mAxilReadMaster .araddr,
+               probe0(255 downto 136) => (others=>'0') );
 
    ---------------------------------------------------------------------------------------------
    -- Driver Polls the userValues to determine the firmware's configurations and interrupt state

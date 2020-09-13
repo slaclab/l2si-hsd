@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-08-10
+-- Last update: 2020-09-10
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -56,15 +56,15 @@ entity QuadAdcCore is
     SYNC_BITS_G : integer := 4;
     DMA_STREAM_CONFIG_G : AxiStreamConfigType;
     DMA_SIZE_G  : integer := 1;
-    BASE_ADDR_C : Slv32Array(2 downto 0) := (others=>x"00000000") );
+    BASE_ADDR_C : Slv32Array(3 downto 0) := (others=>x"00000000") );
   port (
     -- AXI-Lite and IRQ Interface
     axiClk              : in  sl;
     axiRst              : in  sl;
-    axilWriteMasters    : in  AxiLiteWriteMasterArray(2 downto 0);
-    axilWriteSlaves     : out AxiLiteWriteSlaveArray (2 downto 0);
-    axilReadMasters     : in  AxiLiteReadMasterArray (2 downto 0);
-    axilReadSlaves      : out AxiLiteReadSlaveArray  (2 downto 0);
+    axilWriteMasters    : in  AxiLiteWriteMasterArray(3 downto 0);
+    axilWriteSlaves     : out AxiLiteWriteSlaveArray (3 downto 0);
+    axilReadMasters     : in  AxiLiteReadMasterArray (3 downto 0);
+    axilReadSlaves      : out AxiLiteReadSlaveArray  (3 downto 0);
     -- DMA
     dmaClk              : in  sl;
     dmaRst              : out slv                 (NFMC_G-1 downto 0);
@@ -377,14 +377,14 @@ begin
   
   comb : process ( axiRst, r,
                    phaseValue, phaseCount, 
-                   axilWriteMasters(2), axilReadMasters(2) ) is
+                   axilWriteMasters, axilReadMasters ) is
     variable v  : RegType;
     variable ep : AxiLiteEndPointType;
   begin
     v := r;
 
     axiSlaveWaitTxn( ep,
-                     axilWriteMasters(2), axilReadMasters(2),
+                     axilWriteMasters(3), axilReadMasters(3),
                      v.axilWriteSlave, v.axilReadSlave );
 
     for i in 0 to 3 loop
@@ -394,8 +394,8 @@ begin
                 
     axiSlaveDefault( ep, v.axilWriteSlave, v.axilReadSlave );
 
-    axilWriteSlaves(2) <= r.axilWriteSlave;
-    axilReadSlaves (2) <= r.axilReadSlave;
+    axilWriteSlaves(3) <= r.axilWriteSlave;
+    axilReadSlaves (3) <= r.axilReadSlave;
 
     if axiRst = '1' then
       v := REG_INIT_C;

@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-08-12
+-- Last update: 2020-09-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -155,9 +155,27 @@ architecture mapping of QuadAdcEvent is
 
   signal cacheStatus : CacheStatusArray(NFMC_G*MAX_STREAMS_C-1 downto 0);
   signal acqEnable   : slv(NFMC_G-1 downto 0);
-  
+
+  constant DEBUG_C : boolean := true;
+
+  component ila_0
+    port ( clk     : in sl;
+           probe0  : in slv(255 downto 0) );
+  end component;
+
 begin  -- mapping
 
+  GEN_DEBUG : if DEBUG_C generate
+    U_ILA : ila_0
+      port map ( clk                    => dmaClk,
+                 probe0(0)              => dmaRst,
+                 probe0(2 downto 1)     => hdrValid (1 downto 0),
+                 probe0(4 downto 3)     => noPayload(1 downto 0),
+                 probe0(6 downto 5)     => hdrRd    (1 downto 0),
+                 probe0(198 downto 7)   => eventHeader(0),
+                 probe0(255 downto 199) => (others=>'0') );
+  end generate;
+  
   status     <= cacheStatus(0);
   dmaFullS   <= afull;
   dmaFullCnt <= afullCnt;
@@ -232,7 +250,7 @@ begin  -- mapping
                     AXIS_CONFIG_G  => CHN_AXIS_CONFIG_C,
                     IFMC_G         => i,
                     ALGORITHM_G    => FEX_ALGORITHMS,
-                    DEBUG_G        => false )  
+                    DEBUG_G        => (i<1) )  
       port map ( clk             => dmaClk,
                  rst             => dmaRst,
                  clear           => clear,

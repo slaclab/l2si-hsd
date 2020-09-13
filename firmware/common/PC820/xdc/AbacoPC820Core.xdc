@@ -149,6 +149,8 @@ set_property PACKAGE_PIN N42 [get_ports timingRxN]
 set_property PACKAGE_PIN N41 [get_ports timingRxP]
 set_property PACKAGE_PIN M39 [get_ports timingTxN]
 set_property PACKAGE_PIN M38 [get_ports timingTxP]
+set_property PACKAGE_PIN AT20 [get_ports timingTxDis]
+set_property IOSTANDARD LVCMOS33 [get_ports timingTxDis]
 
 create_clock -period 10.000 -name pciRefClkP [get_ports pciRefClkP]
 

@@ -73,46 +73,45 @@ end Application;
 -------------------------------------------------------------------------------
 architecture rtl of Application is
 
-  constant NUM_AXI_MASTERS_C : integer := 7;
+  constant MMCM_INDEX_C      : integer := 0;
+  constant FMCA_CORE_INDEX_C : integer := 1;
+  constant FMCB_CORE_INDEX_C : integer := 2;
+  constant ADCSYNC_INDEX_C   : integer := 3;
+  constant QABASE_INDEX_C    : integer := 4;
+  constant FEXCFG_INDEX_C    : integer := 5;
+  constant TEM_INDEX_C       : integer := 6;
+  constant PHASE_INDEX_C     : integer := 7;
+  constant NUM_AXI_MASTERS_C : integer := 8;
   constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(NUM_AXI_MASTERS_C-1 downto 0) := (
-    0    => (
-      baseAddr        => BASE_ADDR_G+x"0000_0000",
-      addrBits        => 11,
-      connectivity    => x"FFFF"),
-    1    => (
-      baseAddr        => BASE_ADDR_G+x"0000_0800",
-      addrBits        => 11,
-      connectivity    => x"FFFF"),
-    2    => (
-      baseAddr        => BASE_ADDR_G+x"0000_1000",
-      addrBits        => 11,
-      connectivity    => x"FFFF"),
-    3    => (
-      baseAddr        => BASE_ADDR_G+x"0000_1800",
-      addrBits        => 11,
-      connectivity    => x"FFFF"),
-    4    => (
-      baseAddr        => BASE_ADDR_G+x"0000_2000",
-      addrBits        => 11,
-      connectivity    => x"FFFF"),
-    5    => (
-      baseAddr        => BASE_ADDR_G+x"0000_2800",
-      addrBits        => 11,
-      connectivity    => x"FFFF"),
-    6    => (
-      baseAddr        => BASE_ADDR_G+x"0000_8000",
-      addrBits        => 15,
-      connectivity    => x"FFFF") );
+    MMCM_INDEX_C        => ( baseAddr        => BASE_ADDR_G+x"0000_0800",
+                             addrBits        => 11,
+                             connectivity    => x"FFFF"),
+    FMCA_CORE_INDEX_C   => ( baseAddr        => BASE_ADDR_G+x"0000_1000",
+                             addrBits        => 11,
+                             connectivity    => x"FFFF"),
+    FMCB_CORE_INDEX_C   => ( baseAddr        => BASE_ADDR_G+x"0000_1800",
+                             addrBits        => 11,
+                             connectivity    => x"FFFF"),
+    ADCSYNC_INDEX_C     => ( baseAddr        => BASE_ADDR_G+x"0000_2000",
+                             addrBits        => 11,
+                             connectivity    => x"FFFF"),
+    QABASE_INDEX_C      => ( baseAddr        => BASE_ADDR_G+x"0000_0000",
+                             addrBits        => 11,
+                             connectivity    => x"FFFF"),
+    FEXCFG_INDEX_C      => ( baseAddr        => BASE_ADDR_G+x"0000_8000",
+                             addrBits        => 15,
+                             connectivity    => x"FFFF"),
+    TEM_INDEX_C         => ( baseAddr        => BASE_ADDR_G+x"0001_0000",
+                             addrBits        => 16,
+                             connectivity    => x"FFFF"),
+    PHASE_INDEX_C       => ( baseAddr        => BASE_ADDR_G+x"0000_2800",
+                             addrBits        => 11,
+                             connectivity    => x"FFFF") );
   signal mAxilWriteMasters : AxiLiteWriteMasterArray(NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilWriteSlaves  : AxiLiteWriteSlaveArray (NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilReadMasters  : AxiLiteReadMasterArray (NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilReadSlaves   : AxiLiteReadSlaveArray  (NUM_AXI_MASTERS_C-1 downto 0);
 
-  signal cAxilWriteMasters : AxiLiteWriteMasterArray(2 downto 0);
-  signal cAxilWriteSlaves  : AxiLiteWriteSlaveArray (2 downto 0);
-  signal cAxilReadMasters  : AxiLiteReadMasterArray (2 downto 0);
-  signal cAxilReadSlaves   : AxiLiteReadSlaveArray  (2 downto 0);
-  
   signal adcO              : AdcDataArray(4*NFMC_G-1 downto 0);
   signal adcClk            : sl;
   signal adcRst            : sl;
@@ -274,10 +273,10 @@ begin  -- rtl
     port map (
       axiClk              => axiClk,
       axiRst              => axiRst,
-      axilWriteMaster     => mAxilWriteMasters(4),
-      axilWriteSlave      => mAxilWriteSlaves (4),
-      axilReadMaster      => mAxilReadMasters (4),
-      axilReadSlave       => mAxilReadSlaves  (4),
+      axilWriteMaster     => mAxilWriteMasters(ADCSYNC_INDEX_C),
+      axilWriteSlave      => mAxilWriteSlaves (ADCSYNC_INDEX_C),
+      axilReadMaster      => mAxilReadMasters (ADCSYNC_INDEX_C),
+      axilReadSlave       => mAxilReadSlaves  (ADCSYNC_INDEX_C),
       --
       evrClk              => evrClk,
       evrRst              => evrRst,
@@ -321,42 +320,29 @@ begin  -- rtl
                  psDone         => psDone  (1),
                  axilClk        => axiClk,
                  axilRst        => axiRst,
-                 axilReadMaster => mAxilReadMasters (1),
-                 axilReadSlave  => mAxilReadSlaves  (1),
-                 axilWriteMaster=> mAxilWriteMasters(1),
-                 axilWriteSlave => mAxilWriteSlaves (1) );
+                 axilReadMaster => mAxilReadMasters (MMCM_INDEX_C),
+                 axilReadSlave  => mAxilReadSlaves  (MMCM_INDEX_C),
+                 axilWriteMaster=> mAxilWriteMasters(MMCM_INDEX_C),
+                 axilWriteSlave => mAxilWriteSlaves (MMCM_INDEX_C) );
   end generate;
-  
-  cAxilWriteMasters(0) <= mAxilWriteMasters(0);
-  cAxilReadMasters (0) <= mAxilReadMasters (0);
-  mAxilWriteSlaves (0) <= cAxilWriteSlaves (0);
-  mAxilReadSlaves  (0) <= cAxilReadSlaves  (0);
-  cAxilWriteMasters(1) <= mAxilWriteMasters(6);
-  cAxilReadMasters (1) <= mAxilReadMasters (6);
-  mAxilWriteSlaves (6) <= cAxilWriteSlaves (1);
-  mAxilReadSlaves  (6) <= cAxilReadSlaves  (1);
-  cAxilWriteMasters(2) <= mAxilWriteMasters(5);
-  cAxilReadMasters (2) <= mAxilReadMasters (5);
-  mAxilWriteSlaves (5) <= cAxilWriteSlaves (2);
-  mAxilReadSlaves  (5) <= cAxilReadSlaves  (2);
-  --cAxilWriteMasters(1) <= AXI_LITE_WRITE_MASTER_INIT_C;
-  --cAxilReadMasters (1) <= AXI_LITE_READ_MASTER_INIT_C;
   
   U_Core : entity work.QuadAdcCore
     generic map ( NFMC_G      => NFMC_G,
+                  LCLSII_G    => LCLSII_G,
                   SYNC_BITS_G => SYNC_BITS,
-                  BASE_ADDR_C => (AXI_CROSSBAR_MASTERS_CONFIG_C(5).baseAddr,
-                                  AXI_CROSSBAR_MASTERS_CONFIG_C(6).baseAddr,
-                                  AXI_CROSSBAR_MASTERS_CONFIG_C(0).baseAddr),
+                  BASE_ADDR_C => (AXI_CROSSBAR_MASTERS_CONFIG_C(PHASE_INDEX_C ).baseAddr,
+                                  AXI_CROSSBAR_MASTERS_CONFIG_C(TEM_INDEX_C   ).baseAddr,
+                                  AXI_CROSSBAR_MASTERS_CONFIG_C(FEXCFG_INDEX_C).baseAddr,
+                                  AXI_CROSSBAR_MASTERS_CONFIG_C(QABASE_INDEX_C).baseAddr),
                   DMA_SIZE_G  => DMA_SIZE_G,
                   DMA_STREAM_CONFIG_G => DMA_STREAM_CONFIG_G )
     port map (
       axiClk              => axiClk,
       axiRst              => axiRst,
-      axilWriteMasters    => cAxilWriteMasters,
-      axilWriteSlaves     => cAxilWriteSlaves ,
-      axilReadMasters     => cAxilReadMasters ,
-      axilReadSlaves      => cAxilReadSlaves  ,
+      axilWriteMasters    => mAxilWriteMasters(PHASE_INDEX_C downto QABASE_INDEX_C),
+      axilWriteSlaves     => mAxilWriteSlaves (PHASE_INDEX_C downto QABASE_INDEX_C),
+      axilReadMasters     => mAxilReadMasters (PHASE_INDEX_C downto QABASE_INDEX_C),
+      axilReadSlaves      => mAxilReadSlaves  (PHASE_INDEX_C downto QABASE_INDEX_C),
       -- DMA
       dmaClk              => idmaClk,
       dmaRst              => idmaRst,
@@ -387,14 +373,14 @@ begin  -- rtl
 
   GEN_FMC : for i in 0 to NFMC_G-1 generate
     U_FMC : entity work.FmcCore
-      generic map ( AXIL_BASEADDR => AXI_CROSSBAR_MASTERS_CONFIG_C(2+i).baseAddr )
+      generic map ( AXIL_BASEADDR => AXI_CROSSBAR_MASTERS_CONFIG_C(FMCA_CORE_INDEX_C+i).baseAddr )
       port map (
         axilClk          => axiClk,
         axilRst          => axiRst,
-        axilWriteMaster  => mAxilWriteMasters(2+i),
-        axilWriteSlave   => mAxilWriteSlaves (2+i),
-        axilReadMaster   => mAxilReadMasters (2+i),
-        axilReadSlave    => mAxilReadSlaves  (2+i),
+        axilWriteMaster  => mAxilWriteMasters(FMCA_CORE_INDEX_C+i),
+        axilWriteSlave   => mAxilWriteSlaves (FMCA_CORE_INDEX_C+i),
+        axilReadMaster   => mAxilReadMasters (FMCA_CORE_INDEX_C+i),
+        axilReadSlave    => mAxilReadSlaves  (FMCA_CORE_INDEX_C+i),
         cmd_reg_o        => cmd_reg(i),
         cmd_reg_i        => cmd_reg(0),
         
@@ -438,10 +424,10 @@ begin  -- rtl
     U_NOFMC : entity surf.AxiLiteRegs
       port map ( axiClk         => axiClk,
                  axiClkRst      => axiRst,
-                 axiWriteMaster => mAxilWriteMasters(3),
-                 axiWriteSlave  => mAxilWriteSlaves (3),
-                 axiReadMaster  => mAxilReadMasters (3),
-                 axiReadSlave   => mAxilReadSlaves  (3) );
+                 axiWriteMaster => mAxilWriteMasters(FMCB_CORE_INDEX_C),
+                 axiWriteSlave  => mAxilWriteSlaves (FMCB_CORE_INDEX_C),
+                 axiReadMaster  => mAxilReadMasters (FMCB_CORE_INDEX_C),
+                 axiReadSlave   => mAxilReadSlaves  (FMCB_CORE_INDEX_C) );
   end generate;
   
 end rtl;
