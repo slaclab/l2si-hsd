@@ -53,9 +53,9 @@ entity AbacoPC820Core is
    port (
       ------------------------
       --  Top Level Interfaces
-     ------------------------
-     sysClk          : out sl;
-     sysRst          : out sl;
+      ------------------------
+      sysClk          : out sl;
+      sysRst          : out sl;
       -- DMA Interfaces  (dmaClk domain)
       dmaClk          : in  sl;
       dmaRst          : in  sl;
@@ -185,7 +185,31 @@ architecture mapping of AbacoPC820Core is
    signal txStatus       : TimingPhyStatusType := TIMING_PHY_STATUS_INIT_C;
    signal loopback       : slv(2 downto 0);
 
+   signal dmaObMastersAxi    : AxiStreamMasterArray(DMA_SIZE_G-1 downto 0);
+   signal dmaObSlavesAxi     : AxiStreamSlaveArray (DMA_SIZE_G-1 downto 0);
+   signal dmaIbMastersAxi    : AxiStreamMasterArray(DMA_SIZE_G-1 downto 0);
+   signal dmaIbSlavesAxi     : AxiStreamSlaveArray (DMA_SIZE_G-1 downto 0);
+
+   constant DEBUG_C : boolean := true;
+
+   component ila_0
+     port ( clk     : in sl;
+            probe0  : in slv(255 downto 0) );
+   end component;
+   
 begin
+
+  GEN_DEBUG : if DEBUG_C generate
+    U_ILA : ila_0
+      port map ( clk                    => dmaClk,
+                 probe0(0)              => dmaIbMasters(0).tValid,
+                 probe0(1)              => dmaIbMasters(0).tLast,
+                 probe0(33 downto 2)    => dmaIbMasters(0).tData(31 downto 0),
+                 probe0(34)             => dmaIbMasters(1).tValid,
+                 probe0(35)             => dmaIbMasters(1).tLast,
+                 probe0(67 downto 36)   => dmaIbMasters(1).tData(31 downto 0),
+                 probe0(255 downto 68)  => (others=>'0') );
+  end generate;
 
    sysClk <= sysClock;
    
@@ -371,6 +395,57 @@ begin
    ---------------
    -- AXI PCIe DMA
    ---------------
+   GEN_DMA : for i in DMA_SIZE_G-1 downto 0 generate
+     U_IbFifo : entity surf.AxiStreamFifoV2
+       generic map (
+         -- General Configurations
+         TPD_G               => TPD_G,
+         SLAVE_READY_EN_G    => true,
+         VALID_THOLD_G       => 1,
+         -- FIFO configurations
+         MEMORY_TYPE_G       => "block",
+         GEN_SYNC_FIFO_G     => false,
+         FIFO_ADDR_WIDTH_G   => 9,
+         -- AXI Stream Port Configurations
+         SLAVE_AXI_CONFIG_G  => DMA_AXIS_CONFIG_G,
+         MASTER_AXI_CONFIG_G => DMA_AXIS_CONFIG_G)
+       port map (
+         -- Slave Port
+         sAxisClk    => dmaClk,
+         sAxisRst    => dmaRst,
+         sAxisMaster => dmaIbMasters(i),
+         sAxisSlave  => dmaIbSlaves(i),
+         -- Master Port
+         mAxisClk    => sysClock,
+         mAxisRst    => sysReset,
+         mAxisMaster => dmaIbMastersAxi(i),
+         mAxisSlave  => dmaIbSlavesAxi (i));
+     U_ObFifo : entity surf.AxiStreamFifoV2
+       generic map (
+         -- General Configurations
+         TPD_G               => TPD_G,
+         SLAVE_READY_EN_G    => true,
+         VALID_THOLD_G       => 1,
+         -- FIFO configurations
+         MEMORY_TYPE_G       => "block",
+         GEN_SYNC_FIFO_G     => false,
+         FIFO_ADDR_WIDTH_G   => 9,
+         -- AXI Stream Port Configurations
+         SLAVE_AXI_CONFIG_G  => DMA_AXIS_CONFIG_G,
+         MASTER_AXI_CONFIG_G => DMA_AXIS_CONFIG_G)
+       port map (
+         -- Slave Port
+         sAxisClk    => sysClock,
+         sAxisRst    => sysReset,
+         sAxisMaster => dmaObMastersAxi(i),
+         sAxisSlave  => dmaObSlavesAxi (i),
+         -- Master Port
+         mAxisClk    => dmaClk,
+         mAxisRst    => dmaRst,
+         mAxisMaster => dmaObMasters(i),
+         mAxisSlave  => dmaObSlaves (i));
+   end generate GEN_DMA;
+     
    U_AxiPcieDma : entity axi_pcie_core.AxiPcieDma
       generic map (
          TPD_G                => TPD_G,
@@ -396,10 +471,10 @@ begin
          -- DMA Interfaces
          dmaIrq           => dmaIrq,
 --         dmaBuffGrpPause  => dmaBuffGrpPause,
-         dmaObMasters     => dmaObMasters,
-         dmaObSlaves      => dmaObSlaves,
-         dmaIbMasters     => dmaIbMasters,
-         dmaIbSlaves      => dmaIbSlaves);
+         dmaObMasters     => dmaObMastersAxi,
+         dmaObSlaves      => dmaObSlavesAxi,
+         dmaIbMasters     => dmaIbMastersAxi,
+         dmaIbSlaves      => dmaIbSlavesAxi);
 
    intReadMasters (2) <= i2cReadMaster;
    intWriteMasters(2) <= i2cWriteMaster;

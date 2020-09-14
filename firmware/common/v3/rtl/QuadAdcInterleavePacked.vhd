@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-07-31
+-- Last update: 2020-09-13
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -358,7 +358,7 @@ begin  -- mapping
       generic map ( ALG_ID_G      => i,
                     ALGORITHM_G   => ALGORITHM_G(i),
                     AXIS_CONFIG_G => work.AxiStreamPkg.toAxiStreamConfig(SAXIS_CONFIG_C),
-                    DEBUG_G       => ite(i=1,DEBUG_G,false) )
+                    DEBUG_G       => false ) -- ite(i=0,DEBUG_G,false) )
       port map ( clk               => clk,
                  rst               => rst,
                  clear             => clear,
@@ -432,6 +432,7 @@ begin  -- mapping
         if r.ropend(i).trigd = ACCEPT_T then
           if v.axisMaster.tValid='0' then
             v.ropend(i).trigd := WAIT_T;
+            v.ropend(i).streams := (others=>'0');
             v.fexb  := r.ropend(i).streams;
             v.fexn  := 0;
             v.nread := r.nread+1;

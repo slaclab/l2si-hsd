@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-09-12
+-- Last update: 2020-09-13
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -172,8 +172,8 @@ begin  -- mapping
                  probe0(2 downto 1)     => hdrValid (1 downto 0),
                  probe0(4 downto 3)     => noPayload(1 downto 0),
                  probe0(6 downto 5)     => hdrRd    (1 downto 0),
-                 probe0(198 downto 7)   => eventHeader(0),
-                 probe0(255 downto 199) => (others=>'0') );
+                 probe0(134 downto 7)   => eventHeader(0)(127 downto 0),
+                 probe0(255 downto 135) => (others=>'0') );
   end generate;
   
   status     <= cacheStatus(0);
@@ -284,7 +284,7 @@ begin  -- mapping
     U_DATA : entity work.QuadAdcChannelData
       generic map ( SAXIS_CONFIG_G => CHN_AXIS_CONFIG_C,
                     MAXIS_CONFIG_G => DMA_STREAM_CONFIG_G,
-                    DEBUG_G        => false )
+                    DEBUG_G        => (i<1) )
       port map ( dmaClk      => dmaClk,
                  dmaRst      => dmaRst,
                  --
