@@ -46,10 +46,10 @@ namespace Pds {
 
     class TriggerEventManager {
     public:
-      void trig_lcls(unsigned eventcode);
-      void start();
-      void stop ();
-      void dump () const;
+      void trig_lcls(unsigned eventcode,unsigned chan);
+      void start(unsigned chan);
+      void stop (unsigned chan);
+      void dump (unsigned chan) const;
     private:
       EvrV2CoreTriggers evr;
       uint32_t rsvd_to_9000[(0x9000-sizeof(evr))/4];

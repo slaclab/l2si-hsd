@@ -11,16 +11,20 @@ namespace Pds {
     class TprCore;
     class FexCfg;
     class Jtag;
+    class PhaseMsmt;
 
     class Module {
     public:
       //
       //  High level API
       //
-      static Module* create(int fd);
-      static Module* create(int fd, TimingType);
+      static Module* create(int fd, unsigned fmc);
+      static Module* create(int fd, unsigned fmc, TimingType);
       
       ~Module();
+
+      int      fd() const { return _fd; }
+      unsigned fmc() const { return _fmc; }
 
       uint64_t device_dna() const;
 
@@ -45,18 +49,15 @@ namespace Pds {
       void disable_test_pattern();
       void enable_cal ();
       void disable_cal();
-      void setAdcMux(unsigned channels);
-      void setAdcMux(bool     interleave,
-                     unsigned channels);
 
       void sample_init (unsigned length,
                         unsigned delay,
-                        unsigned prescale);
+                        unsigned prescale,
+                        int      onechannel_input,
+                        unsigned streams);
 
       void trig_lcls  (unsigned eventcode);
-      void trig_lclsii(unsigned fixedrate);
-      void trig_daq   (unsigned partition);
-
+      void sync       ();
       void start      ();
       void stop       ();
 
@@ -68,7 +69,8 @@ namespace Pds {
 
       AxiVersion version() const;
       Pds::HSD::TprCore&    tpr    ();
-      Pds::HSD::Jtag&  jtag();
+      Pds::HSD::Jtag&       jtag();
+      Pds::HSD::PhaseMsmt&  phasemsmt();
 
       void setRxAlignTarget(unsigned);
       void setRxResetLength(unsigned);
@@ -80,11 +82,7 @@ namespace Pds {
 
       FexCfg* fex();
 
-      //  Zero copy read semantics
-      //      ssize_t dequeue(void*&);
-      //      void    enqueue(void*);
-      //  Copy on read
-      int read(uint32_t* data, unsigned data_size);
+      int read(void* data, unsigned data_size);
 
       void* reg();
     private:
@@ -94,6 +92,7 @@ namespace Pds {
       PrivateData* p;
 
       int _fd;
+      unsigned _fmc;
     };
   };
 };

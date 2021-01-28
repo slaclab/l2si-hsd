@@ -11,12 +11,6 @@ namespace Pds {
     class QABase {
     public:
       void init();
-      void setChannels(unsigned);
-      enum Interleave { Q_NONE, Q_ABCD };
-      void setMode    (Interleave);
-      void setupDaq (unsigned partition);
-      void setupLCLS(unsigned rate);
-      void setupLCLSII(unsigned rate);
       void enableDmaTest(bool);
       void start();
       void stop ();

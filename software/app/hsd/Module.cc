@@ -24,6 +24,7 @@
 #include "hsd/PhaseMsmt.hh"
 #include "hsd/TriggerEventManager.hh"
 #include "hsd/Xvc.hh"
+#include "hsd/DmaDriver.h"
 
 #include <string>
 #include <unistd.h>
@@ -42,19 +43,20 @@ namespace Pds {
     class Module::PrivateData {
     public:
       //  Initialize busses
-      void init();
+      void init(unsigned fmc);
 
       //  Initialize clock tree and IO training
-      void fmc_init(TimingType);
+      void fmc_init(unsigned fmc, TimingType);
 
       int  train_io(unsigned);
 
-      void enable_test_pattern(TestPattern);
-      void disable_test_pattern();
-      void enable_cal ();
-      void disable_cal();
+      void enable_test_pattern(unsigned fmc,TestPattern);
+      void disable_test_pattern(unsigned fmc);
+      void enable_cal (unsigned fmc);
+      void disable_cal(unsigned fmc);
       void setAdcMux(bool     interleave,
-                     unsigned channels);
+                     unsigned channel,
+                     unsigned fmc);
 
       void setRxAlignTarget(unsigned);
       void setRxResetLength(unsigned);
@@ -131,11 +133,17 @@ namespace Pds {
 
 using namespace Pds::HSD;
 
-Module* Module::create(int fd)
+Module* Module::create(int fd, unsigned fmc)
 {
   Module* m = new Module;
   m->p = 0;
   m->_fd = fd;
+  m->_fmc = fmc;
+
+  uint8_t dmaMask[DMA_MASK_SIZE];
+  dmaInitMaskBytes(dmaMask);
+  dmaAddMaskBytes(dmaMask,fmc<<8);
+  dmaSetMaskBytes(fd,dmaMask);
 
   Pds::HSD::RegProxy::initialize(m->_fd);
   Pds::HSD::I2cProxy::initialize(m->p, m->p->regProxy);
@@ -143,9 +151,9 @@ Module* Module::create(int fd)
   return m;
 }
 
-Module* Module::create(int fd, TimingType timing)
+Module* Module::create(int fd, unsigned fmc, TimingType timing)
 {
-  Module* m = create(fd);
+  Module* m = create(fd,fmc);
 
   //
   //  Verify clock synthesizer is setup
@@ -193,17 +201,10 @@ Module::~Module()
 {
 }
 
-int Module::read(uint32_t* data, unsigned data_size)
+int Module::read(void* data, unsigned data_size)
 {
-  RxDesc* desc = new RxDesc(data,data_size);
-  int nw = ::read(_fd, desc, sizeof(*desc));
-  delete desc;
-
-  nw *= sizeof(uint32_t);
-  if (nw>=32)
-    data[7] = nw - 8*sizeof(uint32_t);
-
-  return nw;
+  size_t nb = dmaRead(_fd,data,data_size,NULL,NULL,NULL);
+  return nb;
 }
 
 enum 
@@ -264,15 +265,13 @@ enum
         DIR3_OUTPUT     = (1<<3),                                                       /*!< FMC12x_cpld_init() DIR 3 is output */
 };
 
-void Module::PrivateData::init()
+void Module::PrivateData::init(unsigned fmc)
 {
-  i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-  fmc_spi.initSPI();
-  i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
+  i2c_sw_control.select((fmc==0) ? I2cSwitch::PrimaryFmc : I2cSwitch::SecondaryFmc);
   fmc_spi.initSPI();
 }
 
-void Module::PrivateData::fmc_init(TimingType timing)
+void Module::PrivateData::fmc_init(unsigned fmc, TimingType timing)
 {
 // if(FMC12x_init(AddrSipFMC12xBridge, AddrSipFMC12xClkSpi, AddrSipFMC12xAdcSpi, AddrSipFMC12xCpldSpi, AddrSipFMC12xAdcPhy, 
 //                modeClock, cardType, GA, typeVco, carrierKC705)!=FMC12X_ERR_OK) {
@@ -300,57 +299,43 @@ void Module::PrivateData::fmc_init(TimingType timing)
     clksrc_clktree = CLOCKTREE_CLKSRC_EXTERNAL;
   }
 
-  if (!fmca_core.present()) {
-    printf("FMC card A not present\n");
+  const char cfmc = (fmc==0) ? 'A':'B';
+  FmcCore& fmc_core = (fmc==0) ? fmca_core : fmcb_core;
+  if (!fmc_core.present()) {
+    printf("FMC card %c not present\n",cfmc);
     printf("FMC init failed!\n");
     return;
   }
 
-  {
-    printf("FMC card A initializing\n");
-    i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-    if (fmc_spi.cpld_init())
-      printf("cpld_init failed!\n");
-    if (fmc_spi.clocktree_init(clksrc_clktree, vcotype, timing))
-      printf("clocktree_init failed!\n");
-  }
-
-#ifndef DISABLE_READOUT_B
-  if (fmcb_core.present()) {
-    printf("FMC card B initializing\n");
-    i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-    if (fmc_spi.cpld_init())
-      printf("cpld_init failed!\n");
-    if (fmc_spi.clocktree_init(clksrc_clktree, vcotype, timing))
-      printf("clocktree_init failed!\n");
-  }
-#endif
+  printf("FMC card %c initializing\n",cfmc);
+  i2c_sw_control.select((fmc==0) ? I2cSwitch::PrimaryFmc : I2cSwitch::SecondaryFmc); 
+  if (fmc_spi.cpld_init())
+    printf("cpld_init failed!\n");
+  if (fmc_spi.clocktree_init(clksrc_clktree, vcotype, timing))
+    printf("clocktree_init failed!\n");
 }
 
+//
+//  IO Training
+//
 int Module::PrivateData::train_io(unsigned ref_delay)
 {
-  //
-  //  IO Training
-  //
   if (!fmca_core.present()) {
     printf("FMC card A not present\n");
     printf("IO training failed!\n");
     return -1;
   }
 
-#ifdef DISABLE_READOUT_B
+  //  bool fmcb_present = fmcb_core.present();
   bool fmcb_present = false;
-#else
-  bool fmcb_present = fmcb_core.present();
-#endif
 
-  i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+  i2c_sw_control.select(I2cSwitch::PrimaryFmc);
   if (fmc_spi.adc_enable_test(Flash11)) 
     return -1;
 
   if (fmcb_present) {
     i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-    if (fmc_spi.adc_enable_test(Flash11))
+    if (fmc_spi.adc_enable_test(Flash11)) 
       return -1;
   }
 
@@ -397,61 +382,37 @@ int Module::PrivateData::train_io(unsigned ref_delay)
   return 0;
 }
 
-void Module::PrivateData::enable_test_pattern(TestPattern p)
+void Module::PrivateData::enable_test_pattern(unsigned fmc, TestPattern p)
 {
   if (p < 8) {
-    i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+    i2c_sw_control.select(fmc);
     fmc_spi.adc_enable_test(p);
-#ifndef DISABLE_READOUT_B
-    if (fmcb_core.present()) {
-      i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-      fmc_spi.adc_enable_test(p);
-    }
-#endif
   }
   else
     base.enableDmaTest(true);
 }
 
-void Module::PrivateData::disable_test_pattern()
+void Module::PrivateData::disable_test_pattern(unsigned fmc)
 {
-  i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+  i2c_sw_control.select(fmc);
   fmc_spi.adc_disable_test();
-#ifndef DISABLE_READOUT_B
-  if (fmcb_core.present()) {
-    i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-    fmc_spi.adc_disable_test();
-  }
-#endif
   base.enableDmaTest(false);
 }
 
-void Module::PrivateData::enable_cal()
+void Module::PrivateData::enable_cal(unsigned fmc)
 {
-  i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+  i2c_sw_control.select(fmc);
   fmc_spi.adc_enable_cal();
-  fmca_core.cal_enable();
-#ifndef DISABLE_READOUT_B
-  if (fmcb_core.present()) {
-    i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-    fmc_spi.adc_enable_cal();
-    fmca_core.cal_enable();
-  }
-#endif
+  FmcCore& fmc_core = (fmc==0) ? fmca_core : fmcb_core;
+  fmc_core.cal_enable();
 }
 
-void Module::PrivateData::disable_cal()
+void Module::PrivateData::disable_cal(unsigned fmc)
 {
-  i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-  fmca_core.cal_disable();
+  i2c_sw_control.select(fmc);
+  FmcCore& fmc_core = (fmc==0) ? fmca_core : fmcb_core;
+  fmc_core.cal_disable();
   fmc_spi.adc_disable_cal();
-#ifndef DISABLE_READOUT_B
-  if (fmcb_core.present()) {
-    i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-    fmcb_core.cal_disable();
-    fmc_spi.adc_disable_cal();
-  }
-#endif
 }
 
 void Module::PrivateData::setRxAlignTarget(unsigned t)
@@ -590,75 +551,36 @@ void Module::dumpBase() const
 
 void Module::dumpStatus() const
 {
-  p->tem.dump();
+  p->tem.dump(0);
 }
 
 void Module::PrivateData::setAdcMux(bool     interleave,
-                                    unsigned channels)
+                                    unsigned channel,
+                                    unsigned fmc)
 {
-  unsigned ch = channels&0xf;
-  if (interleave) {
-    base.setChannels(channels);
-    base.setMode( QABase::Q_ABCD );
-    i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-    fmc_spi.setAdcMux(interleave, ch);
-#ifndef DISABLE_READOUT_B
-    if (fmcb_core.present()) {
-      i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-      fmc_spi.setAdcMux(interleave, ch);
-    }
-#endif
-  }
-  else {
-#ifdef DISABLE_READOUT_B
-    {
-#else
-    if (fmcb_core.present()) {
-      base.setChannels(ch | (ch<<4));
-      base.setMode( QABase::Q_NONE );
-      i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-      fmc_spi.setAdcMux(interleave, ch);
-      i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-      fmc_spi.setAdcMux(interleave, ch);
-    }
-    else {
-#endif
-      base.setChannels(ch);
-      base.setMode( QABase::Q_NONE );
-      i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-      fmc_spi.setAdcMux(interleave, ch);
-    }
-  }
+  i2c_sw_control.select(fmc);
+  fmc_spi.setAdcMux(interleave, channel);
 }
 
-void Module::init() { p->init(); }
+void Module::init() { p->init(_fmc); p->base.init(); }
 
 unsigned Module::ncards() const { 
-#ifdef DISABLE_READOUT_B
-  return 1;
-#else
-  return p->fmcb_core.present() ? 2 : 1; 
-#endif
+  unsigned n=0;
+  if (p->fmca_core.present()) n++;
+  if (p->fmcb_core.present()) n++;
+  return n;
 }
 
-void Module::fmc_init(TimingType timing) { p->fmc_init(timing); }
+void Module::fmc_init(TimingType timing) { p->fmc_init(_fmc,timing); }
 
 void Module::fmc_dump() {
-  if (p->fmca_core.present())
+  FmcCore& fmc_core = (_fmc==0) ? p->fmca_core : p->fmcb_core;
+  if (fmc_core.present())
     for(unsigned i=0; i<16; i++) {
-      p->fmca_core.selectClock(i);
+      fmc_core.selectClock(i);
       usleep(100000);
-      printf("Clock [%i]: rate %f MHz\n", i, p->fmca_core.clockRate()*1.e-6);
+      printf("Clock [%i]: rate %f MHz\n", i, fmc_core.clockRate()*1.e-6);
     }
-  
-#ifndef DISABLE_READOUT_B
-  if (p->fmcb_core.present())
-    for(unsigned i=0; i<9; i++) {
-      p->fmcb_core.selectClock(i);
-      usleep(100000);
-      printf("Clock [%i]: rate %f MHz\n", i, p->fmcb_core.clockRate()*1.e-6);
-    }
-#endif
 }
 
 void Module::fmc_clksynth_setup(TimingType timing)
@@ -747,45 +669,13 @@ void Module::flash_write(FILE* f)
 
 int  Module::train_io(unsigned v) { return p->train_io(v); }
 
-void Module::enable_test_pattern(TestPattern t) { p->enable_test_pattern(t); }
+void Module::enable_test_pattern(TestPattern t) { p->enable_test_pattern(_fmc,t); }
 
-void Module::disable_test_pattern() { p->disable_test_pattern(); }
+void Module::disable_test_pattern() { p->disable_test_pattern(_fmc); }
 
-void Module::enable_cal () { p->enable_cal(); }
+void Module::enable_cal () { p->enable_cal(_fmc); }
 
-void Module::disable_cal() { p->disable_cal(); }
-
-void Module::setAdcMux(unsigned channels)
-{
-  unsigned ch = channels&0xf;
-#ifdef DISABLE_READOUT_B
-  {
-#else
-  if (p->fmcb_core.present()) {
-    //    p->base.setChannels(0xff);
-    p->base.setChannels(ch | (ch<<4));
-    p->base.setMode( QABase::Q_NONE );
-    p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-    //    p->fmc_spi.setAdcMux((channels>>0)&0xf);
-    p->fmc_spi.setAdcMux(0);
-    p->i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
-    //    p->fmc_spi.setAdcMux((channels>>4)&0xf);
-    p->fmc_spi.setAdcMux(0);
-  }
-  else {
-#endif
-    //    p->base.setChannels(0xf);
-    p->base.setChannels(ch);
-    p->base.setMode( QABase::Q_NONE );
-    p->i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
-    //    p->fmc_spi.setAdcMux(channels&0xf);
-    p->fmc_spi.setAdcMux(0);
-  }
-}
-
-void Module::setAdcMux(bool     interleave,
-                       unsigned channels) 
-{ p->setAdcMux(interleave, channels); }
+void Module::disable_cal() { p->disable_cal(_fmc); }
 
 AxiVersion Module::version() const 
 {
@@ -795,6 +685,7 @@ AxiVersion Module::version() const
 }
 Pds::HSD::TprCore&    Module::tpr    () { return p->tpr; }
 Pds::HSD::Jtag&       Module::jtag   () { return p->jtag; }
+Pds::HSD::PhaseMsmt&  Module::phasemsmt() { return p->phase; }
 
 void Module::setRxAlignTarget(unsigned v) { p->setRxAlignTarget(v); }
 void Module::setRxResetLength(unsigned v) { p->setRxResetLength(v); }
@@ -803,34 +694,36 @@ void Module::dumpPgp         () const { p->dumpPgp(); }
 
 void Module::sample_init(unsigned length, 
                          unsigned delay,
-                         unsigned prescale)
+                         unsigned prescale,
+                         int      onechannel_input,   // integer
+                         unsigned streams) // bitmask
 {
-  p->base.init();
-  p->base.samples  = length;
-  p->base.prescale = (prescale&0x3f);
-  p->base.offset   = delay;
+  //  p->base.init();  // this will interrupt the other fmc, but I think OK during configure
 
-  //  p->dma_core.init(32+48*length);
+  unsigned nrows = (onechannel_input >= 0) ? length/32 : length/8;
 
-  //  p->dma_core.dump();
+  p->fex_chan[_fmc]._streams = streams;
+  for(unsigned i=0; i<8; i++)
+    if (streams & (1<<i)) {
+      p->fex_chan[_fmc]._base[i].setGate(delay,nrows);
+      if (i<4)
+        p->fex_chan[_fmc]._stream[i].parms[0].v = i;
+    }
 
-  //  p->dma.setEmptyThr(emptyThr);
-  //  p->base.dmaFullThr=fullThr;
+  p->setAdcMux(onechannel_input>=0, onechannel_input, _fmc);
 
   //  flush out all the old
   { printf("flushing\n");
     unsigned nflush=0;
     uint32_t* data = new uint32_t[1<<20];
-    RxDesc* desc = new RxDesc(data,1<<20);
-    pollfd pfd;
-    pfd.fd = _fd;
-    pfd.events = POLLIN;
-    while(poll(&pfd,1,0)>0) { 
-      ::read(_fd, desc, sizeof(*desc));
+    // pollfd pfd;
+    // pfd.fd = _fd;
+    // pfd.events = POLLIN;
+    //    while(poll(&pfd,1,0)>0) { 
+    while(dmaRead(_fd, data, 1<<22, NULL, NULL, NULL)>0) {
       nflush++;
     }
     delete[] data;
-    delete desc;
     printf("done flushing [%u]\n",nflush);
   }
     
@@ -840,67 +733,54 @@ void Module::sample_init(unsigned length,
 void Module::trig_lcls  (unsigned eventcode)
 {
   //  p->base.setupLCLS(eventcode);
-  p->tem.trig_lcls(eventcode);
+  p->tem.trig_lcls(eventcode,_fmc);
 }
 
-void Module::trig_lclsii(unsigned fixedrate)
+void Module::sync()
 {
-  p->base.setupLCLSII(fixedrate);
-}
-
-void Module::trig_daq   (unsigned partition)
-{
-  p->base.setupDaq(partition);
+  p->i2c_sw_control.select(I2cSwitch::PrimaryFmc);
+  p->fmc_spi.applySync();
 }
 
 void Module::start()
 {
   p->base.start();
-  p->tem.start();
+  p->tem.start(_fmc);
 }
 
 void Module::stop()
 {
-  p->tem.stop();
+  p->tem.stop(_fmc);
   p->base.stop();
-  //  p->dma_core.dump();
 }
 
 unsigned Module::get_offset(unsigned channel)
 {
-  p->i2c_sw_control.select((channel&0x4)==0 ? 
-                           I2cSwitch::PrimaryFmc :
-                           I2cSwitch::SecondaryFmc); 
+  p->i2c_sw_control.select(channel&0x4);
   return p->fmc_spi.get_offset(channel&0x3);
 }
 
 unsigned Module::get_gain(unsigned channel)
 {
-  p->i2c_sw_control.select((channel&0x4)==0 ? 
-                           I2cSwitch::PrimaryFmc :
-                           I2cSwitch::SecondaryFmc); 
+  p->i2c_sw_control.select(channel&0x4);
   return p->fmc_spi.get_gain(channel&0x3);
 }
 
 void Module::set_offset(unsigned channel, unsigned value)
 {
-  p->i2c_sw_control.select((channel&0x4)==0 ? 
-                           I2cSwitch::PrimaryFmc :
-                           I2cSwitch::SecondaryFmc); 
+  p->i2c_sw_control.select(channel&0x4);
   p->fmc_spi.set_offset(channel&0x3,value);
 }
 
 void Module::set_gain(unsigned channel, unsigned value)
 {
-  p->i2c_sw_control.select((channel&0x4)==0 ? 
-                           I2cSwitch::PrimaryFmc :
-                           I2cSwitch::SecondaryFmc); 
+  p->i2c_sw_control.select(channel&0x4);
   p->fmc_spi.set_gain(channel&0x3,value);
 }
 
 void* Module::reg() { return (void*)p; }
 
-FexCfg* Module::fex() { return &p->fex_chan[0]; }
+FexCfg* Module::fex() { return &p->fex_chan[_fmc]; }
 
 void Module::dumpMap() const 
 {

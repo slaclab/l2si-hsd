@@ -5,10 +5,12 @@
 
 using namespace Pds::HSD;
 
-void TriggerEventManager::trig_lcls(unsigned eventcode)
+void TriggerEventManager::trig_lcls(unsigned eventcode,
+                                    unsigned chan)
 {
   unsigned rdsel = (eventcode&0xff ) | (2<<11) | (2<<29);
-  for(unsigned i=0; i<2; i++) {
+  {
+    unsigned i=chan;
     evr.ch[i].ratedestsel = rdsel;
     evr.ch[i].enable = 1;
     evr.tr[i].delay  = 1;
@@ -23,22 +25,21 @@ void TriggerEventManager::trig_lcls(unsigned eventcode)
   }
 }
 
-void TriggerEventManager::start()
+void TriggerEventManager::start(unsigned chan)
 {
-  for(unsigned i=0; i<2; i++)
-    buffer[i].enable = 1;
+  buffer[chan].enable = 1;
 }
 
-void TriggerEventManager::stop()
+void TriggerEventManager::stop(unsigned chan)
 {
-  for(unsigned i=0; i<2; i++)
-    buffer[i].enable = 0;
+  buffer[chan].enable  = 0;
+  buffer[chan].fifocsr = (1<<31);
 }
 
-void TriggerEventManager::dump() const
+void TriggerEventManager::dump(unsigned chan) const
 {
-  printf("ch[0].count   %08x\n",unsigned(evr.ch[0].count));
-  printf("bu[0].enable  %08x\n",unsigned(buffer[0].enable));
-  printf("bu[0].fifocsr %08x\n",unsigned(buffer[0].fifocsr));
-  printf("bu[0].count   %08x\n",unsigned(buffer[0].count));
+  printf("ch.count   %08x\n",unsigned(evr.ch[chan].count));
+  printf("bu.enable  %08x\n",unsigned(buffer[chan].enable));
+  printf("bu.fifocsr %08x\n",unsigned(buffer[chan].fifocsr));
+  printf("bu.count   %08x\n",unsigned(buffer[chan].count));
 }

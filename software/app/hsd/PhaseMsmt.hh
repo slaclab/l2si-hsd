@@ -6,9 +6,8 @@
 namespace Pds {
   namespace HSD {
     class PhaseMsmt {
-    private:
-      uint32_t rsvd[8];
     public:
+      RegProxy v[8];
       RegProxy phaseA_even;
       RegProxy phaseA_odd;
       RegProxy phaseB_even;

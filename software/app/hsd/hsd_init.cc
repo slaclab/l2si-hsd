@@ -17,6 +17,7 @@
 #include "hsd/AxiVersion.hh"
 #include "hsd/TprCore.hh"
 #include "hsd/RingBuffer.hh"
+#include "hsd/PhaseMsmt.hh"
 
 #include <string>
 
@@ -27,10 +28,12 @@ using namespace Pds::HSD;
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -d <dev> [default: /dev/datadev_0]\n");
+  printf("\t-f <mezzanine card 0/1>\n");
   printf("\t-C <initialize clock synthesizer>\n");
   printf("\t-R <reset timing frame counters>\n");
   printf("\t-X <reset gtx timing receiver>\n");
   printf("\t-P <reverse gtx rx polarity>\n");
+  printf("\t-T <delay> [train ADC]\n");
   printf("\t-0 <dump raw timing receive buffer>\n");
   printf("\t-1 <dump timing message buffer>\n");
   printf("\t-2 <configure for LCLSII>\n");
@@ -53,7 +56,9 @@ int main(int argc, char** argv) {
   bool lRing1 = false;
   bool lTrain = false;
   bool lTrainNoReset = false;
+  bool lPhaseTest = false;
   TimingType timing=LCLS;
+  unsigned fmc=0;
 
   const char* fWrite=0;
 #if 0
@@ -62,10 +67,13 @@ int main(int argc, char** argv) {
 #endif
   unsigned trainRefDelay = 0;
 
-  while ( (c=getopt( argc, argv, "CRXP0123D:d:htT:W:")) != EOF ) {
+  while ( (c=getopt( argc, argv, "FCRXP0123D:d:f:htT:W:")) != EOF ) {
     switch(c) {
     case 'C':
       lSetupClkSynth = true;
+      break;
+    case 'F':
+      lPhaseTest = true;
       break;
     case 'P':
       lPolarity = true;
@@ -90,6 +98,9 @@ int main(int argc, char** argv) {
       break;
     case 'd':
       dev = optarg;
+      break;
+    case 'f':
+      fmc = strtoul(optarg,&endptr,0);
       break;
     case 't':
       lTrainNoReset = true;
@@ -128,12 +139,12 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  Module* p = Module::create(fd);
+  Module* p = Module::create(fd,fmc);
   p->dumpMap();
 
-  //p->board_status();
+  p->board_status();
 
-  //p->fmc_dump();
+  p->fmc_dump();
 
   if (lSetupClkSynth) {
     p->fmc_clksynth_setup(timing);
@@ -208,6 +219,24 @@ int main(int argc, char** argv) {
 
   if (lTrainNoReset) {
     p->train_io(trainRefDelay);
+  }
+
+  if (lPhaseTest) {
+    //    _m.trig_shift(PVGET(trig_shift));
+    while(1) {
+      const PhaseMsmt& ph = p->phasemsmt();
+      printf("trig phase:");
+      for(unsigned i=0; i<8; i++)
+        printf(" 0x%04x",unsigned(ph.v[i]));
+      printf("\n");
+
+      int eph = ph.phaseA_even;
+      int oph = ph.phaseA_odd;
+      printf("trig phase %05d %05d\n",eph,oph);
+
+      p->sync();
+      usleep(100000);  // Wait for relock                                   
+    }
   }
 
   if (fWrite) {

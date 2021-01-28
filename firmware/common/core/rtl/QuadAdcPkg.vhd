@@ -74,7 +74,7 @@ package QuadAdcPkg is
 
   type AdcDataArray is array(natural range<>) of AdcData;
 
-  constant MAX_STREAMS_C : integer := 4;
+  constant MAX_STREAMS_C : integer := 5;
   subtype STREAMS_RG is natural range MAX_STREAMS_C-1 downto 0;
   type FexConfigType is record
     fexEnable    : slv       (STREAMS_RG);

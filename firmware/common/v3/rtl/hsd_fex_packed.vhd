@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-07-31
+-- Last update: 2020-09-15
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -317,6 +317,7 @@ begin
     v.douten  := douten;
     v.tin     := (others=>"00");
 
+    --  Cache the skip status (begin)
     if lopen = '1' then
       v.skip(r.nopen) := lskip;
       v.tin(conv_integer(lopen_phase ))(0) := not lskip;
@@ -334,12 +335,13 @@ begin
     elsif lopen = '0' and lclose = '1' then
       v.nopen := r.nopen-1;
     end if;
-
+    --  Cache the skip status (end)
+    
     flush     := '0';
 
     --
-    --  Push the data to RAM
-    --  If a buffered line was written, shift away
+    --  Push the data to RAM (begin)
+    --  If a complete row was written, shift away
     --
     if r.wrfull='1' then
       v.wrdata(ROW_SIZE downto 0) := r.wrdata(2*ROW_SIZE downto ROW_SIZE);
@@ -360,6 +362,7 @@ begin
       n := n-ROW_SIZE;
     end if;
     v.wrword := toSlv(n,IDX_BITS+1);
+    --  Push the data to RAM (end)
     
     --
     --  check if a gate has closed; latch time
@@ -588,6 +591,23 @@ begin
 
   GEN_NTR : if ALGORITHM_G = "NTR" generate
     U_FEX : entity work.hsd_raw_ilv_native
+      generic map ( ILV_G   => ILV_G )
+      port map ( ap_clk          => clk,
+                 ap_rst_n        => rstn,
+                 sync            => configSync,
+                 x               => din,
+                 tin             => r.tin,
+                 y               => idout,
+                 tout            => tout,
+                 yv              => douten,
+                 axilReadMaster  => axilReadMaster,
+                 axilReadSlave   => axilReadSlave,
+                 axilWriteMaster => axilWriteMaster,
+                 axilWriteSlave  => axilWriteSlave );
+  end generate;
+
+  GEN_CHN : if ALGORITHM_G = "CHN" generate
+    U_FEX : entity work.hsd_raw_mux_native
       generic map ( ILV_G   => ILV_G )
       port map ( ap_clk          => clk,
                  ap_rst_n        => rstn,

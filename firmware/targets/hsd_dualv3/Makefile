@@ -7,7 +7,8 @@ target: prom
 
 # Define Firmware Version Number
 #  PRJ_VERSION 00000000 : LCLS-I implementation
-export PRJ_VERSION = 000000000
+#  PRJ_VERSION 00000001 : Add streams for individual channels
+export PRJ_VERSION = 000000001
 
 # Define target part
 export PRJ_PART = XCKU085-FLVB1760-2-E

@@ -143,7 +143,8 @@ static HSD::Histogram scorr   (7,1);
 static uint64_t opid = 0;
 static uint32_t osnc = 0;
 static Module::TestPattern pattern = Module::Flash11;
-static QABase::Interleave qI=QABase::Q_NONE;
+enum Interleave {Q_NONE,Q_ABCD};
+static Interleave qI=Q_NONE;
 
 static unsigned nPrint = 20;
 
@@ -154,14 +155,15 @@ static bool checkFlashN            (uint32_t* p, const unsigned n);
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options:\n");
-  printf("\t-I interleave\n");
+  printf("\t-I interleaved input\n");
+  printf("\t-f FMC\n");
   printf("\t-B busyTime : Sleeps for busytime seconds each read\n");
   printf("\t-E emptyThr : Set empty threshold for flow control\n");
-  printf("\t-B fullThr  : \n");
+  printf("\t-F fullThr  : \n");
   printf("\t-R rate     : Set trigger rate [0:929kHz, 1:71kHz, 2:10kHz, 3:1kHz, 4:100Hz, 5:10Hz\n");
   printf("\t-P partition: Set trigger source to partition\n");
-  printf("\t-v nPrint   : Set number of events to dump out");
-  printf("\t-V          : Dump out all events");
+  printf("\t-v nPrint   : Set number of events to dump out\n");
+  printf("\t-V          : Dump out all events\n");
 }
 
 static Module* reg=0;
@@ -183,9 +185,12 @@ void sigHandler( int signal ) {
 int main(int argc, char** argv) {
   extern char* optarg;
   const char* dev = "/dev/datadev_0";
+  unsigned fmc=0;
   unsigned emptyThr=2;
   unsigned fullThr=-1U;
   unsigned length=16;  // multiple of 16
+  int      onechannel_input = -1;
+  unsigned streams = 0xf;
   ThreadArgs args;
   args.fd = -1;
   args.busyTime = 0;
@@ -194,13 +199,18 @@ int main(int argc, char** argv) {
 
   int c;
   bool lUsage = false;
-  while ( (c=getopt( argc, argv, "Id:v:S:B:E:F:R:P:T:Vh")) != EOF ) {
+  while ( (c=getopt( argc, argv, "I:d:v:f:F:S:B:E:F:R:P:T:Vh")) != EOF ) {
     switch(c) {
     case 'I':
-      qI=QABase::Q_ABCD;
+      qI=Q_ABCD;
+      onechannel_input = strtoul(optarg,NULL,0);
+      streams = 0x10;
       break;
     case 'd':
       dev = optarg;
+      break;
+    case 'f':
+      fmc = strtoul(optarg,NULL,0);
       break;
     case 'B':
       args.busyTime = strtoul(optarg,NULL,0);
@@ -262,22 +272,20 @@ int main(int argc, char** argv) {
 
   uint8_t dmaMask[DMA_MASK_SIZE];
   dmaInitMaskBytes(dmaMask);
-  dmaAddMaskBytes(dmaMask,0);
+  dmaAddMaskBytes(dmaMask,fmc<<8);
   dmaSetMaskBytes(fd,dmaMask);
 
   args.fd  = fd;
   sem_init(&args.sem,0,0);
 
-  Module* p = reg = Module::create(fd);
+  Module* p = reg = Module::create(fd,fmc);
 
   p->dumpMap();
   p->disable_test_pattern();
   p->enable_test_pattern(pattern);
-  //  p->enable_test_pattern(Module::DMA);
 
-  //  p->dma_core.init(0x400);
-  p->sample_init(32+48*length, 0, 0);
-  p->setAdcMux( false, 0xf );
+  p->init();
+  p->sample_init(length, 0, 0, onechannel_input, streams);
   p->trig_lcls( args.rate );
 
   //
@@ -316,6 +324,7 @@ int main(int argc, char** argv) {
       ostats.dump(stats);
       ostats = stats; }
 
+#if 0    
     { unsigned v = p->tpr().RxDecErrs+p->tpr().RxDspErrs - rxErrs0;
       unsigned u = p->tpr().RxRstDone - rxRsts0;
       printf("RxErrs/Resets: %08x/%08x [%x/%x]\n", 
@@ -326,6 +335,7 @@ int main(int argc, char** argv) {
       rxErrs=v; rxRsts=u; }
 
     p->dumpBase  ();
+#endif
     p->dumpStatus();
   }
 
@@ -343,7 +353,7 @@ void* read_thread(void* arg)
   unsigned  dest;
   ssize_t   nb;
 
-  static bool lLCLSII = targs.rate<9;
+  bool lLCLSII = (targs.rate<9);
 
   uint64_t dpid;
   switch(targs.rate) {
@@ -363,31 +373,35 @@ void* read_thread(void* arg)
   case 46:dpid =720; break;
   default: dpid = 1; break;
   }
+  printf("rate [%u] dpid [%lu] LCLSII [%c]\n",targs.rate,dpid,lLCLSII?'T':'F');
 
   //  sem_post(&targs.sem);
 
   while(1) {
-
     if ((nb = dmaRead(targs.fd, data, 1<<24, &flags, &error, &dest))>0) {
+        /*
       { printf("READ %zd bytes\n",nb);
         uint32_t* p     = (uint32_t*)data;
-        unsigned ilimit = lVerbose ? nb : 16;
+        unsigned ilimit = (lVerbose || (nb<64)) ? (nb>>2) : 16;
         for(unsigned i=0; i<ilimit; i++)
           printf(" %08x",p[i]);
         printf("\n"); }
+        */
       uint32_t* p     = (uint32_t*)data;
       {
         daqStats.eventFrames()++;
-        opid = p[4];
-        osnc = p[5];
-        if (lLCLSII)
+        if (lLCLSII) {
+          opid = p[4];
           opid = (opid<<32) | p[3];
-        //        break;
+        }
+        else {
+          opid = p[2]&0x1ffff;
+        }
+        osnc = p[7];
       }
+      break;
     }
   }
-
-  return 0;
 
 #if 0
   pollfd pfd;
@@ -401,30 +415,32 @@ void* read_thread(void* arg)
     while (::poll(&pfd, 1, 1000)<=0)
       ;
 #endif
-    if ((nb = dmaRead(targs.fd, data, 1<<24, &flags, &error, &dest))<0) {
-      //      perror("read error");
-      //      break;
+    if ((nb = dmaRead(targs.fd, data, 1<<24, &flags, &error, &dest))<=0) {
       //  timeout in driver
       continue;
     }
 
     uint32_t* p     = (uint32_t*)data;
     //    uint32_t  len   = p[0];
-    uint32_t  etag  = p[1];
-    uint64_t  pid   = p[4]; 
-    if (lLCLSII)
-      pid = (pid<<32)|p[3];
+    uint64_t  pid ;
+    if (lLCLSII) {
+      pid = p[4];
+      pid = (pid<<32) | p[3];
+    }
+    else {
+      pid = p[2]&0x1ffff;
+    }
+
     uint64_t  pid_busy = lLCLSII ? (opid + (1ULL<<20)) : (opid + 360);
 
     readSize.bump(nb>>5);
-    adcSync .bump((p[5]&0xfff)>>2);
-    unsigned dsnc = ((p[5]&0xfff)>>2)-((osnc&0xfff)>>2);
+    adcSync .bump((p[7]&0xfff)>>2);
+    unsigned dsnc = ((p[7]&0xfff)>>2)-((osnc&0xfff)>>2);
     //    scorr   .bump( ((dsnc+10)%10)*10 + ((p[6]>>1)*21)%10);
     scorr   .bump( ((dsnc+8)%8)*10 + ((p[6]>>1)*21)%10);
 
     osnc = p[5];
 
-    //    if ((etag&0xffff)==0) {
     if (1) {
       daqStats.eventFrames()++;
 
@@ -447,7 +463,7 @@ void* read_thread(void* arg)
 
       switch(pattern) {
       case Module::Flash11:
-        if (qI==QABase::Q_ABCD) {
+        if (qI==Q_ABCD) {
           if (!checkFlashN_interleaved(p,11))
             daqStats.corrupt()++;
         }
@@ -457,7 +473,7 @@ void* read_thread(void* arg)
         }
         break;
       case Module::Flash12:
-        if (qI==QABase::Q_ABCD) {
+        if (qI==Q_ABCD) {
           if (!checkFlashN_interleaved(p,12))
             daqStats.corrupt()++;
         }
@@ -467,7 +483,7 @@ void* read_thread(void* arg)
         }
         break;
       case Module::Flash16:
-        if (qI==QABase::Q_ABCD) {
+        if (qI==Q_ABCD) {
           if (!checkFlashN_interleaved(p,16))
             daqStats.corrupt()++;
         }
@@ -484,8 +500,8 @@ void* read_thread(void* arg)
       
       if (nPrint) {
         nPrint--;
-        printf("EVENT  [0x%x]:",(etag&0xffff));
-        unsigned ilimit = lVerbose ? nb : 16;
+        printf("EVENT:");
+        unsigned ilimit = (lVerbose || nb<64) ? (nb>>2) : 16;
         for(unsigned i=0; i<ilimit; i++)
           printf(" %08x",p[i]);
         printf("\n");
@@ -495,13 +511,6 @@ void* read_thread(void* arg)
         usleep(targs.busyTime);
         pid_busy = lLCLSII ? (opid + (1ULL<<20)) : (opid + 360);
       }
-    }
-    else if ((etag&0xffff)==1) {
-      printf("DMA FULL:\n");
-      unsigned sz = p[0]&0xffffff;
-      for(unsigned i=0; i<sz-2; i++)
-        printf("%08x%c",p[2+i],(i%10)==9 ? '\n':' ');
-      printf("\n");
     }
   }
 
@@ -518,9 +527,9 @@ bool checkFlashN_interleaved(uint32_t* p,
   unsigned s=0;
   for(unsigned i=8; i<8+n*2; i++) {
     if (p[i]==0) continue;
-    //    if (p[i]==0x07ff07ff) {
+    if (p[i]==0x07ff07ff) {
     //  Saturate
-    if (p[i]==0x04000400) {
+    //if (p[i]==0x04000400) {
       s=i; break;
     }
     printf("Unexpected data [%08x] at word %u\n",
@@ -534,9 +543,9 @@ bool checkFlashN_interleaved(uint32_t* p,
 
   for(unsigned i=30; i<nb; i++) {
     if ((((i-s)/2)%n)==0) {
-      //      if (p[i] != 0x07ff07ff) {
+      if (p[i] != 0x07ff07ff) {
       //  Saturate
-      if (p[i] != 0x04000400) {
+      //if (p[i] != 0x04000400) {
         printf("Unexpected data %08x [%08x] at word %u:%u\n", p[i], 0x07ff07ff, i, (i-s)%(2*n));
         return false;
       }
@@ -559,9 +568,9 @@ bool checkFlashN(uint32_t* p,
   int s=-1;
   for(unsigned i=0; i<n; i++) {
     if (q[i]==0) continue;
-    //    if (q[i]==0x07ff) {
+    if (q[i]==0x07ff) {
     //  Saturate
-    if (q[i]==0x0400) {
+    //if (q[i]==0x0400) {
       s=i; break;
     }
     printf("Unexpected data [%04x] at word %u\n",
@@ -578,9 +587,9 @@ bool checkFlashN(uint32_t* p,
   for(unsigned j=0; j<4; j++, q+=nb) {
     for(unsigned i=s; i<nb; i++) {
       if (((i-s)%n)==0) {
-        //        if (q[i] != 0x07ff) {
+        if (q[i] != 0x07ff) {
         //  Saturate
-        if (q[i] != 0x0400) {
+        //if (q[i] != 0x0400) {
           printf("Unexpected data %04x [%04x] at word %u.%u:%u\n", q[i], 0x07ff, j, i, s);
           return false;
         }

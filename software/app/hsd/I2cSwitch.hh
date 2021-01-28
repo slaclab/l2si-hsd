@@ -10,6 +10,7 @@ namespace Pds {
     public:
       enum Port { PrimaryFmc=1, SecondaryFmc=2, SFP=4, LocalBus=8 };
       void select(Port);
+      void select(unsigned fmc) { select(fmc==0 ? PrimaryFmc : SecondaryFmc); }
       void dump () const;
     private:
       I2cProxy _control;

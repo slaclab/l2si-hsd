@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  Module* p = reg = Module::create(fd);
+  Module* p = reg = Module::create(fd,0);
   p->dumpMap();
 
   printf("BuildStamp: %s\n",p->version().buildString);

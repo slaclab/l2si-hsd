@@ -20,6 +20,7 @@ namespace Pds {
                             unsigned   vcotype,
                             TimingType timing = LCLS);
       void clockWhileSync  ();
+      void applySync       () { _applySync(); }
       void limitBandwidth  (bool);
       int adc_enable_test  (unsigned pattern);
       int adc_disable_test ();
@@ -27,7 +28,9 @@ namespace Pds {
       void adc_enable_cal  ();
       void adc_disable_cal ();
 
+      //  Common input mode (rare)
       void setAdcMux(unsigned channels);
+      //  4-channel or 1-channel (interleaved) mode
       void setAdcMux(bool     interleave,
                      unsigned channels);
 

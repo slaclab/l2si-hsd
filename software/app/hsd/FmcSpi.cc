@@ -279,21 +279,21 @@ void FmcSpi::_applySync()
 {
   //  Apply sync
   uint32_t v = _readCPLD(0);
-  printf("applySync-0 %x\n",v);
+  //  printf("applySync-0 %x\n",v);
 
   v &= ~0x10;
   _writeCPLD(0,v);
   usleep(50000);
 
   uint32_t q = _readCPLD(0);
-  printf("applySync-1 %x\n",q);
+  //  printf("applySync-1 %x\n",q);
 
   v |= 0x10;
   _writeCPLD(0,v);
   usleep(50000);
 
   v = _readCPLD(0);
-  printf("applySync-2 %x\n",v);
+  //  printf("applySync-2 %x\n",v);
 }
 
 int FmcSpi::adc_enable_test(unsigned pattern)
@@ -383,6 +383,8 @@ void FmcSpi::setAdcMux(unsigned channels)
     }
 
   _writeADC(1,v);
+
+  printf("Wrote 0x%x to ADC\n",v);
 }
 
 void FmcSpi::setAdcMux(bool     interleave,
@@ -400,6 +402,8 @@ void FmcSpi::setAdcMux(bool     interleave,
       }
   }
   _writeADC(1,v);
+
+  printf("Wrote 0x%x to ADC\n",v);
 }
 
 char FmcSpi::_cardId() const

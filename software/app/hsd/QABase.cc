@@ -9,9 +9,9 @@ void QABase::init()
 {
   unsigned v = csr;
   v &= ~(1<<30);
-  csr = v | (1<<4);
+  csr = v | (1<<28);
   usleep(10);
-  csr = v & ~(1<<4);
+  csr = v & ~(1<<28);
 }
 
 void QABase::start()
@@ -21,8 +21,6 @@ void QABase::start()
   control = v;
 
   v = csr;
-  //  csr = v | (1<<30) | (1<<1);
-  v &= ~(1<<4);   // remove reset
   csr = v | (1<<30);
 
   irqEnable = 1;
@@ -40,47 +38,6 @@ void QABase::resetCounts()
   csr = v | (1<<0);
   usleep(10);
   csr = v & ~(1<<0);
-}
-
-void QABase::setChannels(unsigned ch)
-{
-  unsigned v = control;
-  v &= ~0xff;
-  v |= (ch&0xff);
-  control = v;
-}
-
-void QABase::setMode (Interleave q)
-{
-  unsigned v = control;
-  if (q) v |=  (1<<8);
-  else   v &= ~(1<<8);
-  control = v;
-}
-
-void QABase::setupDaq(unsigned partition)
-{
-  acqSelect = (1<<30) | (3<<11) | partition;  // obsolete
-  { unsigned v = control;
-    v &= ~(0xf << 16);
-    v |= (partition&0xf) << 16;
-    control = v; }
-  unsigned v = csr & ~(1<<0);
-  csr = v | (1<<0);
-}
-
-void QABase::setupLCLS(unsigned rate)
-{
-  acqSelect = rate&0xff;
-  unsigned v = csr & ~(1<<0);
-  csr = v | (1<<0);
-}
-
-void QABase::setupLCLSII(unsigned rate)
-{
-  acqSelect = (1<<30) | (0<<11) | rate;
-  unsigned v = csr & ~(1<<0);
-  csr = v | (1<<0);
 }
 
 void QABase::enableDmaTest(bool enable)
@@ -118,10 +75,10 @@ void QABase::resetClock(bool r)
 void QABase::resetDma()
 {
   unsigned v = csr;
-  v |= (1<<4);
+  v |= (1<<28);
   csr = v;
   usleep(10);
-  v &= ~(1<<4);
+  v &= ~(1<<28);
   csr = v;
 }
 

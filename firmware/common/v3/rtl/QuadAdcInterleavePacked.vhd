@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-09-13
+-- Last update: 2021-01-26
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -62,8 +62,8 @@ entity QuadAdcInterleavePacked is
     l1ina           :  in sl;
     l0tag           :  in slv       (4 downto 0);
     l1tag           :  in slv       (4 downto 0);
-    l1a             : out slv       (3 downto 0);
-    l1v             : out slv       (3 downto 0);
+    l1v             : out sl;
+    l1a             : out sl;
     --
     almost_full     : out sl;
     overflow        : out sl;
@@ -87,11 +87,12 @@ end QuadAdcInterleavePacked;
 
 architecture mapping of QuadAdcInterleavePacked is
 
-  constant NSTREAMS_C : integer := ALGORITHM_G'length;
+  constant NSTREAMS_C   : integer := ALGORITHM_G'length;
+  constant MAXSTREAMS_C : integer := 8;
 
   type TrigState is ( WAIT_T, REJECT_T, ACCEPT_T );
   type PendType is record
-    streams    : slv(NSTREAMS_C-1 downto 0);
+    streams    : slv(MAXSTREAMS_C-1 downto 0);
     trigd      : TrigState;
   end record;
 
@@ -211,7 +212,7 @@ architecture mapping of QuadAdcInterleavePacked is
            probe0 : in slv(255 downto 0) );
   end component;
 
-  signal r_fexb      : slv(3 downto 0) := (others=>'0');
+  signal r_fexb      : slv(MAXSTREAMS_C-1 downto 0) := (others=>'0');
   signal r_fexn      : slv(3 downto 0);
   signal wraddr      : Slv16Array      (NSTREAMS_C-1 downto 0);
   signal rdaddr      : Slv16Array      (NSTREAMS_C-1 downto 0);
@@ -233,8 +234,8 @@ begin  -- mapping
   
   GENDEBUG : if DEBUG_C generate
 
-    r_fexb(r.fexb'range) <= r.fexb;
-    r_fexn <= toSlv(r.fexn,4);
+    r_fexb <= resize(r.fexb,r_fexb'length);
+    r_fexn <= toSlv(r.fexn,r_fexn'length);
     
     U_ILA : ila_0
       port map ( clk       => clk,
@@ -242,26 +243,14 @@ begin  -- mapping
                  probe0(1) => r.axisMaster.tValid,
                  probe0(2) => r.axisMaster.tLast,
                  probe0(3) => maxisSlave.tReady,
-                 probe0( 7 downto  4) => r_fexb,
-                 probe0(11 downto  8) => r_fexn,
-                 probe0(43 downto 12) => r.axisMaster.tData(31 downto 0),
-                 probe0(55 downto 44) => (others=>'0'),
-                 probe0(57 downto 56) => r.ropend(0).streams,
-                 probe0(59 downto 58) => r.ropend(1).streams,
-                 probe0(61 downto 60) => r.ropend(2).streams,
-                 probe0(63 downto 62) => r.ropend(3).streams,
-                 probe0(65 downto 64) => r.ropend(4).streams,
-                 probe0(67 downto 66) => r.ropend(5).streams,
-                 probe0(69 downto 68) => r.ropend(6).streams,
-                 probe0(71 downto 70) => r.ropend(7).streams,
-                 probe0(73 downto 72) => r.ropend(8).streams,
-                 probe0(75 downto 74) => r.ropend(9).streams,
-                 probe0(77 downto 76) => r.ropend(10).streams,
-                 probe0(79 downto 78) => r.ropend(11).streams,
-                 probe0(81 downto 80) => r.ropend(12).streams,
-                 probe0(83 downto 82) => r.ropend(13).streams,
-                 probe0(85 downto 84) => r.ropend(14).streams,
-                 probe0(87 downto 86) => r.ropend(15).streams,
+                 probe0(11 downto  4) => r_fexb,
+                 probe0(15 downto 12) => r_fexn,
+                 probe0(47 downto 16) => r.axisMaster.tData(31 downto 0),
+                 probe0(55 downto 48) => (others=>'0'),
+                 probe0(63 downto 56) => r.ropend(0).streams,
+                 probe0(71 downto 64) => r.ropend(1).streams,
+                 probe0(79 downto 72) => r.ropend(2).streams,
+                 probe0(87 downto 80) => r.ropend(3).streams,
                  probe0(88)           => start,
                  probe0(89)           => l1in,
                  probe0(90)           => l1ina,
@@ -337,8 +326,8 @@ begin  -- mapping
                rdClk      => clk );
   
   GEN_STR : for i in 0 to NSTREAMS_C-1 generate
-    l1v   (i) <= lclose(i);
-    l1a   (i) <= '0';
+    -- l1v   (i) <= lclose(i);
+    -- l1a   (i) <= '0';
 
     U_GATE : entity work.FexGate
       port map ( clk          => clk,
@@ -393,8 +382,8 @@ begin  -- mapping
   end generate;
 
   GEN_REM : for i in NSTREAMS_C to MAX_STREAMS_C-1 generate
-    l1v   (i) <= '0';
-    l1a   (i) <= '0';
+    -- l1v   (i) <= '0';
+    -- l1a   (i) <= '0';
     status(i) <= (others=>CACHE_INIT_C);
   end generate;
   
@@ -433,7 +422,7 @@ begin  -- mapping
           if v.axisMaster.tValid='0' then
             v.ropend(i).trigd := WAIT_T;
             v.ropend(i).streams := (others=>'0');
-            v.fexb  := r.ropend(i).streams;
+            v.fexb  := r.ropend(i).streams(NSTREAMS_C-1 downto 0);
             v.fexn  := 0;
             v.nread := r.nread+1;
             v.axisMaster.tValid := '1';
@@ -442,7 +431,7 @@ begin  -- mapping
               v.axisMaster.tLast := '1';
             end if;
             v.axisMaster.tKeep := work.AxiStreamPkg.genTKeep(SAXIS_CONFIG_C.TDATA_BYTES_C);
-            v.axisMaster.tData(223 downto 212) := toSlv(1,8) & resize(v.fexb,4);
+            v.axisMaster.tData(223 downto 212) := toSlv(1,4) & resize(v.fexb,8);
           end if;
         elsif r.ropend(i).trigd = REJECT_T then
           v.ropend(i).trigd := WAIT_T;
@@ -473,17 +462,17 @@ begin  -- mapping
     v.axilReadSlave.rdata := (others=>'0');
       
     axiSlaveRegister ( ep, x"00", 0, v.fexEnable );
-    axiSlaveRegister ( ep, x"00", 4, v.aaFullN );
+    axiSlaveRegister ( ep, x"00", 8, v.aaFullN );
     axiSlaveRegisterR( ep, x"04", 0, muxSlVectorArray(cntOflow,NSTREAMS_C) );
 
     axiSlaveRegisterR( ep, x"08", 0, r.fexb );
-    axiSlaveRegisterR( ep, x"08", 4, toSlv(r.fexn,4) );
+    axiSlaveRegisterR( ep, x"08", 5, toSlv(r.fexn,3) );
     for i in 0 to NSTREAMS_C-1 loop
       axiSlaveRegisterR( ep, x"08", 8+i, axisMasters(i).tValid );
     end loop;
-    axiSlaveRegisterR( ep, x"08",12, maxisSlave.tReady );
-    axiSlaveRegisterR( ep, x"08",13, r.axisMaster.tValid );
-    axiSlaveRegisterR( ep, x"08",14, axisSlaveTmp.tReady );
+    axiSlaveRegisterR( ep, x"08",13, maxisSlave.tReady );
+    axiSlaveRegisterR( ep, x"08",14, r.axisMaster.tValid );
+    axiSlaveRegisterR( ep, x"08",15, axisSlaveTmp.tReady );
     axiSlaveRegisterR( ep, x"08",16, rdaddr(r.fexn) );
     axiSlaveRegisterR( ep, x"0C", 0, r.npend  );
     axiSlaveRegisterR( ep, x"0C", 5, r.ntrig  );
@@ -519,7 +508,7 @@ begin  -- mapping
         end if;
       end loop;
       i := conv_integer(r.npend);
-      v.ropend(i).streams := v.start and not v.skip;
+      v.ropend(i).streams(NSTREAMS_C-1 downto 0) := v.start and not v.skip;
       v.npend := r.npend+1;
 
       if r.nfree = 0 then
@@ -530,9 +519,9 @@ begin  -- mapping
 
     if l1in = '1' then
       i := conv_integer(r.ntrig);
-      v.l1in := r.ropend(i).streams;
+      v.l1in := r.ropend(i).streams(NSTREAMS_C-1 downto 0);
       if l1ina = '1' then
-        v.l1ina := r.ropend(i).streams;
+        v.l1ina := r.ropend(i).streams(NSTREAMS_C-1 downto 0);
         v.ropend(i).trigd := ACCEPT_T;
       else
         v.ropend(i).trigd := REJECT_T;

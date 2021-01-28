@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-07-30
+-- Last update: 2020-09-17
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -138,7 +138,8 @@ begin  -- mapping
                  probe0(72 downto 70) => r_state,
                  probe0(73)           => tSlave.tReady,
                  probe0(74)           => r.hdrRd,
-                 probe0(255 downto 75) => (others=>'0') );
+                 probe0(79 downto 75) => eventHdr(68 downto 64), -- LCLS1 PID
+                 probe0(255 downto 80) => (others=>'0') );
   end generate;
   
   U_FIFO : entity surf.AxiStreamFifoV2

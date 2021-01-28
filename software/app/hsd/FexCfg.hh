@@ -27,9 +27,9 @@ namespace Pds {
         RegProxy _gate;
         RegProxy _full; 
         RegProxy _free;
-      } _base  [4];
+      } _base  [8];
 
-      RegProxy _rsvd2[44];
+      RegProxy _rsvd2[28];
 
       class Stream {
       public:
@@ -41,10 +41,10 @@ namespace Pds {
           RegProxy v;
           RegProxy rsvd;
         } parms[30];
-      } _stream[4];
+      } _stream[8];
 
     private:
-      RegProxy _rsvd3[(0x1000-0x500)>>2];
+      RegProxy _rsvd3[(0x1000-0x900)>>2];
     };
   };
 };
