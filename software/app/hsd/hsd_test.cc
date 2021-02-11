@@ -19,7 +19,7 @@
 
 #include "Histogram.hh"
 #include "Module.hh"
-#include "RxDesc.hh"
+#include "Event.hh"
 #include "QABase.hh"
 #include "TprCore.hh"
 #include "DmaDriver.h"
@@ -155,8 +155,8 @@ static bool checkFlashN            (uint32_t* p, const unsigned n);
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options:\n");
-  printf("\t-I interleaved input\n");
-  printf("\t-f FMC\n");
+  printf("\t-I          : interleaved input (default False)\n");
+  printf("\t-f FMC      : Card to readout (default 0)\n");
   printf("\t-B busyTime : Sleeps for busytime seconds each read\n");
   printf("\t-E emptyThr : Set empty threshold for flow control\n");
   printf("\t-F fullThr  : \n");
@@ -444,6 +444,21 @@ void* read_thread(void* arg)
     if (1) {
       daqStats.eventFrames()++;
 
+      if (nPrint) {
+        nPrint--;
+        printf("EVENT:");
+        unsigned ilimit = (lVerbose || nb<64) ? (nb>>2) : 16;
+        for(unsigned i=0; i<ilimit; i++)
+          printf(" %08x",p[i]);
+        printf("\n");
+
+        const EventHeader* eh = reinterpret_cast<const EventHeader*>(p);
+        eh->dump();
+        const StreamHeader* sh = eh->streams().first();
+        printf("StreamHeader @%p\n",sh);
+        sh->dump();
+      }
+    
       if (pid==opid) {
         daqStats.repeatFrames()++;
         printf("repeat  [%zd]: exp %016lx: ",nb,opid+dpid);
@@ -498,15 +513,6 @@ void* read_thread(void* arg)
 
       opid = pid;
       
-      if (nPrint) {
-        nPrint--;
-        printf("EVENT:");
-        unsigned ilimit = (lVerbose || nb<64) ? (nb>>2) : 16;
-        for(unsigned i=0; i<ilimit; i++)
-          printf(" %08x",p[i]);
-        printf("\n");
-      }
-    
       if (targs.busyTime && opid > pid_busy) {
         usleep(targs.busyTime);
         pid_busy = lLCLSII ? (opid + (1ULL<<20)) : (opid + 360);
@@ -522,14 +528,17 @@ void* read_thread(void* arg)
 bool checkFlashN_interleaved(uint32_t* p, 
                              const unsigned n)
 {
-  unsigned nb = p[0]&0xffffff;
+  const EventHeader*  eh = reinterpret_cast<const EventHeader*>(p);
+  StreamIterator iter    = eh->streams();
+  const StreamHeader* sh = iter.first();
+  const uint16_t*      q = sh->data();
 
   unsigned s=0;
-  for(unsigned i=8; i<8+n*2; i++) {
-    if (p[i]==0) continue;
-    if (p[i]==0x07ff07ff) {
+  for(unsigned i=4; i<sh->samples(); i++) {
+    if (q[i]==0) continue;
+    if (q[i]==0x07ff) {
     //  Saturate
-    //if (p[i]==0x04000400) {
+    //if (p[i]==0x0400) {
       s=i; break;
     }
     printf("Unexpected data [%08x] at word %u\n",
@@ -541,19 +550,19 @@ bool checkFlashN_interleaved(uint32_t* p,
     return false;
   }
 
-  for(unsigned i=30; i<nb; i++) {
-    if ((((i-s)/2)%n)==0) {
-      if (p[i] != 0x07ff07ff) {
-      //  Saturate
-      //if (p[i] != 0x04000400) {
-        printf("Unexpected data %08x [%08x] at word %u:%u\n", p[i], 0x07ff07ff, i, (i-s)%(2*n));
-        return false;
+  for(unsigned i=s+4; i<sh->samples(); i++) {
+      if (((i-s)%(4*n))<4) {
+          if (q[i] != 0x07ff) {
+              //  Saturate
+              //if (p[i] != 0x04000400) {
+              printf("Unexpected data %08x [%08x] at word %u:%u\n", q[i], 0x07ff, i, (i-s)%(4*n));
+              return false;
+          }
       }
-    }
-    else if (p[i] != 0) {
-      printf("Unexpected data %08x [%08x] at word %u:%u\n", p[i],0,i,(i-s)%(2*n));
-        return false;
-    }
+      else if (q[i] != 0) {
+          printf("Unexpected data %08x [%08x] at word %u:%u\n", q[i],0,i,(i-s)%(4*n));
+          return false;
+      }
   }
   return true;
 }
@@ -561,12 +570,13 @@ bool checkFlashN_interleaved(uint32_t* p,
 bool checkFlashN(uint32_t* p,
                  const unsigned n)
 {
-  unsigned nb = p[0]&0xffffff;
-
-  const uint16_t* q = reinterpret_cast<const uint16_t*>(p+8);
+  const EventHeader*  eh = reinterpret_cast<const EventHeader*>(p);
+  StreamIterator iter    = eh->streams();
+  const StreamHeader* sh = iter.first();
+  const uint16_t*      q = sh->data();
 
   int s=-1;
-  for(unsigned i=0; i<n; i++) {
+  for(unsigned i=0; i<sh->samples(); i++) {
     if (q[i]==0) continue;
     if (q[i]==0x07ff) {
     //  Saturate
@@ -582,23 +592,23 @@ bool checkFlashN(uint32_t* p,
     return false;
   }
 
-  nb = (nb-8)/2;
-
-  for(unsigned j=0; j<4; j++, q+=nb) {
-    for(unsigned i=s; i<nb; i++) {
-      if (((i-s)%n)==0) {
-        if (q[i] != 0x07ff) {
-        //  Saturate
-        //if (q[i] != 0x0400) {
-          printf("Unexpected data %04x [%04x] at word %u.%u:%u\n", q[i], 0x07ff, j, i, s);
-          return false;
-        }
+  for(unsigned j=0; sh; j++) {
+      for(unsigned i=s; i<sh->samples(); i++) {
+          q  = sh->data();
+          if (((i-s)%n)==0) {
+              if (q[i] != 0x07ff) {
+                  //  Saturate
+                  //if (q[i] != 0x0400) {
+                  printf("Unexpected data %04x [%04x] at word %u.%u:%u\n", q[i], 0x07ff, j, i, s);
+                  return false;
+              }
+          }
+          else if (q[i] != 0) {
+              printf("Unexpected data %04x [%04x] at word %u.%u:%u\n", q[i],0,j,i,s);
+              return false;
+          }
       }
-      else if (q[i] != 0) {
-        printf("Unexpected data %04x [%04x] at word %u.%u:%u\n", q[i],0,j,i,s);
-        return false;
-      }
-    }
+      sh = iter.next();
   }
   return true;
 }

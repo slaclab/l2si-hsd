@@ -112,7 +112,7 @@ class FexCfg(pr.Device):
                 name = 'StreamBase[%d]'%i,
                 offset = 0x10 + 0x10*i))
             if i<4:
-                addVar('streamChan[%d]'%i, 0x100+i*0x100, 2, 0, 'RW')
+                addVar('streamChan[%d]'%i, 0x110+i*0x100, 2, 0, 'RW')
 
 class FmcCore(pr.Device):
     def __init__(   self,

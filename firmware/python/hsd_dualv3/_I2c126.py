@@ -238,6 +238,13 @@ class FmcSpi(object):
         self._writeCPLD(0,v|0x40)
         self._writeCPLD(0,v&~0x40)
 
+    def setAdcMux(self, interleave, channel):
+        v = self._readADC(1)
+        v &= 0xf
+        if interleave:
+            v |= (1<<3) | i
+        self._writeADC(1,v)
+
     def _applySync(self):
         #  Apply sync
         v = self._readCPLD(0)
@@ -663,7 +670,7 @@ class I2c126(pr.Device):
         self.imona        = Tps2481 (self.MasterProxy,0x1800)
         self.imonb        = Tps2481 (self.MasterProxy,0x1C00)
         #self.vtmona       = 0x2000
-        self.FmcSpi       = FmcSpi  (self.MasterProxy,0x2400)
+        self.fmcspi       = FmcSpi  (self.MasterProxy,0x2400)
 
         addvar('local12v')
         addvar('edge12v')
@@ -723,4 +730,14 @@ class I2c126(pr.Device):
         @self.command(value='')
         def set_i2c_mux(arg):
             self.i2cmux.setPort(i2cSwitchPort[arg])
-            
+
+        @self.command()
+        def setAdcOneChannelMode(arg):
+            self.i2cmux.setPort(i2cSwitchPort['PrimaryFmc'])
+            self.fmcspi.setAdcMux(True,arg)
+
+        @self.command()
+        def setAdcFourChannelMode():
+            self.i2cmux.setPort(i2cSwitchPort['PrimaryFmc'])
+            self.fmcspi.setAdcMux(False,0)
+

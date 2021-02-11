@@ -1,6 +1,6 @@
 libnames := hsd
 libsrcs_hsd := $(filter-out hsd_init.cc hsd_pgp.cc hsd_sim.cc hsd_valid.cc hsd_xvc.cc hsd_datadev.cc, $(wildcard *.cc))
-libincs_hsd := Module.hh TprCore.hh AxiVersion.h RxDesc.hh Globals.hh
+libincs_hsd := Module.hh TprCore.hh AxiVersion.h Event.hh Globals.hh
 
 tgtnames := hsd_init
 tgtsrcs_hsd_init := hsd_init.cc
@@ -17,10 +17,10 @@ tgtsrcs_hsd_xvc := hsd_xvc.cc
 tgtlibs_hsd_xvc := hsd
 tgtslib_hsd_xvc := rt pthread
 
-tgtnames += hsd_pgp
-tgtsrcs_hsd_pgp := hsd_pgp.cc
-tgtlibs_hsd_pgp := hsd
-tgtslib_hsd_pgp := rt pthread
+#tgtnames += hsd_pgp
+#tgtsrcs_hsd_pgp := hsd_pgp.cc
+#tgtlibs_hsd_pgp := hsd
+#tgtslib_hsd_pgp := rt pthread
 
 tgtnames += hsd_sim
 tgtsrcs_hsd_sim := hsd_sim.cc

@@ -5,8 +5,6 @@
 #include "hsd/RxDesc.hh"
 #include "hsd/ClkSynth.hh"
 #include "hsd/Mmcm.hh"
-#include "hsd/DmaCore.hh"
-#include "hsd/PhyCore.hh"
 #include "hsd/Pgp2bAxi.hh"
 #include "hsd/RingBuffer.hh"
 #include "hsd/I2cSwitch.hh"
@@ -66,14 +64,20 @@ namespace Pds {
       //  Low level API
       //
     public:
-      uint32_t rsvd_to_0x080000[(0x80000)/4];
+      // AxiPcieCore
+      uint32_t         rsvd_to_0x020000[(0x20000)/4];
+      AxiVersion       version;
 
-      FlashController      flash;
-      uint32_t rsvd_to_0x090000[(0x10000-sizeof(FlashController))/4];
-
-      // XvcSrc
-      Jtag jtag;
-      uint32_t rsvd_to_0x0A0000[(0x10000-sizeof(jtag))/4];
+      //uint32_t         rsvd_to_0x060000[(0x40000)/4 - sizeof(version)];
+      //AxiStreamMonAxiL dmaIbAxisMon;
+      //uint32_t         rsvd_to_0x070000[(0x10000)/4 - sizeof(dmaIbAxisMon)];
+      //AxiStreamMonAxiL dmaObAxisMon;
+      //uint32_t         rsvd_to_0x0A0000[(0x20000-sizeof(dmaObAxisMon))/4];
+      uint32_t          rsvd_to_0x080000[(0x060000-sizeof(version))/4];
+      FlashController   flash;
+      uint32_t          rsvd_to_0x090000[(0x010000-sizeof(flash))/4];
+      Jtag              jtag;
+      uint32_t          rsvd_to_0x0A0000[(0x010000-sizeof(jtag))/4];
 
       // I2C
       I2cSwitch i2c_sw_control;  // 0xA0000

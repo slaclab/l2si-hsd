@@ -19,6 +19,8 @@
 
 #include "hsd/Module.hh"
 #include "hsd/AxiVersion.hh"
+#include "hsd/Event.hh"
+#include "hsd/DmaDriver.h"
 
 using namespace Pds::HSD;
 
@@ -78,6 +80,55 @@ int main(int argc, char** argv) {
   printf("BuildStamp: %s\n",p->version().buildString);
 
   p->dumpBase();
+
+  p->disable_test_pattern();
+  //  p->enable_test_pattern(pattern);
+
+  p->init();
+
+  // "Rows" of data 
+  // 1 row = 8 samples four channel mode or 
+  //        32 samples one channel mode)
+  
+  unsigned length = 40;  
+  //  Four channel readout
+  p->sample_init(length, 0, 0, -1, 0xf);
+  //  One channel readout (interleaved)
+  //  unsigned channel = 0; // input channel
+  //  p->sample_init(length, 0, 0, channel, 0x10);
+
+  //  Setup trigger
+  unsigned eventcode = 40;
+  p->trig_lcls( eventcode );
+
+  //  Enable
+  p->start();
+
+  const unsigned nevents = 10;
+  const unsigned maxSize = 1<<24;
+  uint32_t* data = new uint32_t[maxSize];
+  unsigned flags;
+  unsigned error;
+  unsigned dest;
+  ssize_t  nb;
+
+  for(unsigned ievt = 0; ievt < nevents; ) {
+      if ((nb = dmaRead(fd, data, maxSize, &flags, &error, &dest))>0) {
+          ievt++;
+          const EventHeader* eh = reinterpret_cast<const EventHeader*>(data);
+          eh->dump();
+          StreamIterator it = eh->streams();
+          for(const StreamHeader* sh = it.first(); sh; sh=it.next()) {
+              sh->dump();
+              const uint16_t* samples = sh->data();
+              for(unsigned i=0; i<8; i++)
+                  printf(" %04x", samples[i]);
+              printf("\n");
+          }
+      }
+  }
+
+  p->stop();
 
   return 0;
 }

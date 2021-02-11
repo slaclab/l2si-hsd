@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  Module* p = Module::create(fd);
+  Module* p = Module::create(fd,0);
   Xvc::launch( &p->jtag(), 11000, false );
   while(1)
     sleep(1);
