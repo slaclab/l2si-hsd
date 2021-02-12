@@ -1,6 +1,6 @@
 libnames := hsd
 libsrcs_hsd := $(filter-out hsd_init.cc hsd_pgp.cc hsd_sim.cc hsd_valid.cc hsd_xvc.cc hsd_datadev.cc, $(wildcard *.cc))
-libincs_hsd := Module.hh TprCore.hh AxiVersion.h Event.hh Globals.hh
+libincs_hsd := Module.hh TprCore.hh AxiVersion.h Event.hh Globals.hh DmaDriver.h
 
 tgtnames := hsd_init
 tgtsrcs_hsd_init := hsd_init.cc
