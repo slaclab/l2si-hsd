@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-01-26
+-- Last update: 2021-03-19
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -109,8 +109,10 @@ architecture mapping of QuadAdcInterleavePacked is
     fexEnable  : slv(NSTREAMS_C-1 downto 0);
     fexPrescale: Slv10Array(NSTREAMS_C-1 downto 0);
     fexPreCount: Slv10Array(NSTREAMS_C-1 downto 0);
-    fexBegin   : Slv14Array(NSTREAMS_C-1 downto 0);
-    fexLength  : Slv14Array(NSTREAMS_C-1 downto 0);
+    fexBegin   : Slv20Array(NSTREAMS_C-1 downto 0);
+    fexLength  : Slv20Array(NSTREAMS_C-1 downto 0);
+    fexBeginR  : Slv16Array(NSTREAMS_C-1 downto 0);
+    fexLengthR : Slv16Array(NSTREAMS_C-1 downto 0);
     skip       : slv       (NSTREAMS_C-1 downto 0);
     start      : slv       (NSTREAMS_C-1 downto 0);
     l1in       : slv       (NSTREAMS_C-1 downto 0);
@@ -143,6 +145,8 @@ architecture mapping of QuadAdcInterleavePacked is
     fexPreCount=> (others=>(others=>'0')),
     fexBegin   => (others=>(others=>'0')),
     fexLength  => (others=>(others=>'0')),
+    fexBeginR  => (others=>(others=>'0')),
+    fexLengthR => (others=>(others=>'0')),
     skip       => (others=>'0'),
     start      => (others=>'0'),
     l1in       => (others=>'0'),
@@ -330,6 +334,7 @@ begin  -- mapping
     -- l1a   (i) <= '0';
 
     U_GATE : entity work.FexGate
+      generic map ( WIDTH_G => 20 )
       port map ( clk          => clk,
                  rst          => rst,
                  start        => r.start     (i),
@@ -481,8 +486,8 @@ begin  -- mapping
 
     for i in 0 to NSTREAMS_C-1 loop
       axiSlaveRegister ( ep, toSlv(16*i+16,8), 0, v.fexPrescale(i) );
-      axiSlaveRegister ( ep, toSlv(16*i+20,8), 0, v.fexBegin (i) );
-      axiSlaveRegister ( ep, toSlv(16*i+20,8),16, v.fexLength(i) );
+      axiSlaveRegister ( ep, toSlv(16*i+20,8), 0, v.fexBeginR (i) );
+      axiSlaveRegister ( ep, toSlv(16*i+20,8),16, v.fexLengthR(i) );
       axiSlaveRegister ( ep, toSlv(16*i+24,8), 0, v.aFull    (i) );
       axiSlaveRegister ( ep, toSlv(16*i+24,8),16, v.aFullN   (i) );
       axiSlaveRegisterR( ep, toSlv(16*i+28,8), 0, free       (i) );
@@ -490,6 +495,26 @@ begin  -- mapping
       axiSlaveRegisterR( ep, toSlv(16*i+28,8),24, muxSlVectorArray(cntOflow,i) );
     end loop;
 
+    if r.fexBeginR(15 downto 14) = "00" then
+      v.fexBegin := toSlv(0,6) & r.fexBeginR(13 downto 0);
+    elsif r.fexBeginR(15 downto 14) := "01" then
+      v.fexBegin := toSlv(0,4) & r.fexBeginR(13 downto 0) & toSlv(0,2);
+    elsif r.fexBeginR(15 downto 14) := "10" then
+      v.fexBegin := toSlv(0,2) & r.fexBeginR(13 downto 0) & toSlv(0,4);
+    elsif r.fexBeginR(15 downto 14) := "11" then
+      v.fexBegin := r.fexBeginR(13 downto 0) & toSlv(0,6);
+    end if;
+
+    if r.fexLengthR(15 downto 14) = "00" then
+      v.fexLength := toSlv(0,6) & r.fexLengthR(13 downto 0);
+    elsif r.fexLengthR(15 downto 14) := "01" then
+      v.fexLength := toSlv(0,4) & r.fexLengthR(13 downto 0) & toSlv(0,2);
+    elsif r.fexLengthR(15 downto 14) := "10" then
+      v.fexLength := toSlv(0,2) & r.fexLengthR(13 downto 0) & toSlv(0,4);
+    elsif r.fexLengthR(15 downto 14) := "11" then
+      v.fexLength := r.fexLengthR(13 downto 0) & toSlv(0,6);
+    end if;
+    
     axiSlaveDefault( ep, v.axilWriteSlave, v.axilReadSlave );
 
     if start = '1' then
@@ -574,3 +599,4 @@ begin  -- mapping
 
 end mapping;
 
+    

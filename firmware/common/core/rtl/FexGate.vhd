@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2019-04-23
+-- Last update: 2021-03-19
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -42,14 +42,15 @@ use work.QuadAdcPkg.all;
 use work.QuadAdcCompPkg.all;
 
 entity FexGate is
+  generic ( WIDTH_G : integer := 14 );
   port (
     clk             :  in sl;
     rst             :  in sl;
     start           :  in sl;
     handle          :  in sl;
     phase           :  in slv(3 downto 0);
-    fbegin          :  in slv(13 downto 0);
-    flength         :  in slv(13 downto 0);
+    fbegin          :  in slv(WIDTH_G-1 downto 0);
+    flength         :  in slv(WIDTH_G-1 downto 0);
     lopen           : out sl;
     lopen_phase     : out slv(3 downto 0);
     lhandle         : out sl;
@@ -61,7 +62,7 @@ architecture rtl of FexGate is
   type StateType is ( CLOSED_S, WAIT_S, OPEN_S );
   type L0StateType is record
     state  : StateType;
-    count  : slv(13 downto 0);
+    count  : slv(WIDTH_G-1 downto 0);
     phase  : slv(3 downto 0);
     handle : sl;
   end record;

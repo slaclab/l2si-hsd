@@ -155,13 +155,17 @@ static bool checkFlashN            (uint32_t* p, const unsigned n);
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options:\n");
+  printf("\t-d <dev>    : device filename\n");
   printf("\t-I          : interleaved input (default False)\n");
   printf("\t-f FMC      : Card to readout (default 0)\n");
   printf("\t-B busyTime : Sleeps for busytime seconds each read\n");
+  printf("\t-D delay    : Delay in 160 MHz blocks\n");
   printf("\t-E emptyThr : Set empty threshold for flow control\n");
   printf("\t-F fullThr  : \n");
   printf("\t-R rate     : Set trigger rate [0:929kHz, 1:71kHz, 2:10kHz, 3:1kHz, 4:100Hz, 5:10Hz\n");
+  printf("\t-S samples  : Set reaout length in units of 160 MHz blocks\n");
   printf("\t-P partition: Set trigger source to partition\n");
+  printf("\t-T pattern  : Set test pattern\n");
   printf("\t-v nPrint   : Set number of events to dump out\n");
   printf("\t-V          : Dump out all events\n");
 }
@@ -189,6 +193,7 @@ int main(int argc, char** argv) {
   unsigned emptyThr=2;
   unsigned fullThr=-1U;
   unsigned length=16;  // multiple of 16
+  unsigned delay=0;
   int      onechannel_input = -1;
   unsigned streams = 0xf;
   ThreadArgs args;
@@ -199,7 +204,7 @@ int main(int argc, char** argv) {
 
   int c;
   bool lUsage = false;
-  while ( (c=getopt( argc, argv, "I:d:v:f:F:S:B:E:F:R:P:T:Vh")) != EOF ) {
+  while ( (c=getopt( argc, argv, "I:d:D:f:F:S:B:E:F:R:P:T:v:Vh")) != EOF ) {
     switch(c) {
     case 'I':
       qI=Q_ABCD;
@@ -208,6 +213,9 @@ int main(int argc, char** argv) {
       break;
     case 'd':
       dev = optarg;
+      break;
+    case 'D':
+      delay = strtoul(optarg,NULL,0);
       break;
     case 'f':
       fmc = strtoul(optarg,NULL,0);
@@ -285,7 +293,7 @@ int main(int argc, char** argv) {
   p->enable_test_pattern(pattern);
 
   p->init();
-  p->sample_init(length, 0, 0, onechannel_input, streams);
+  p->sample_init(length, delay, 0, onechannel_input, streams);
   p->trig_lcls( args.rate );
 
   //
