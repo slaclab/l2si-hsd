@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
   
   unsigned length = 40;  
   //  Four channel readout
-  p->sample_init(length, 0, 0, -1, 0xf);
+  p->sample_init(length, 1, 0, -1, 0xf);
   //  One channel readout (interleaved)
   //  unsigned channel = 0; // input channel
   //  p->sample_init(length, 0, 0, channel, 0x10);

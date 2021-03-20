@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-03-19
+-- Last update: 2021-03-20
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ architecture rtl of FexGate is
   type L0StateArray  is array(natural range<>) of L0StateType;
 
   type RegType is record
-    count      : slv(13 downto 0);
+    count      : slv(WIDTH_G-1 downto 0);
     l0         : L0StateArray(15 downto 0);
     iclosed    : slv(3 downto 0);
     iwait      : slv(3 downto 0);
