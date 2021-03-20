@@ -15,7 +15,7 @@ namespace Pds {
       public:
         StreamBase() {}
       public:
-        void setGate(unsigned begin, unsigned length) { _gate = (begin&0xffff) | (length<<16); }
+        void setGate(unsigned begin, unsigned length) { _begin = (begin&0xfffff); _length = (length&0xfffff); }
         void setFull(unsigned rows, unsigned events) { _full = (rows&0xffff) | (events<<16); }
         void getFree(unsigned& rows, unsigned& events) {
           unsigned v = _free;
@@ -23,8 +23,8 @@ namespace Pds {
           events = v>>16;
         }
       public:
-        RegProxy _prescale;
-        RegProxy _gate;
+        RegProxy _begin;
+        RegProxy _length; // and prescale
         RegProxy _full; 
         RegProxy _free;
       } _base  [8];
