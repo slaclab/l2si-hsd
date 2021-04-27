@@ -47,6 +47,7 @@ entity AbacoPC820Core is
       DEVICE_MAP_G         : I2cAxiLiteDevArray;
       DMA_AXIS_CONFIG_G    : AxiStreamConfigType;
       DRIVER_TYPE_ID_G     : slv(31 downto 0)            := x"00000000";
+      AXI_COMMON_CLK_G     : boolean                      := false;
       DMA_BURST_BYTES_G    : positive range 256 to 4096  := 256;
       DMA_SIZE_G           : positive range 1 to 8       := 1;
       TIMING_CORE_G        : string := "NONE" ); -- LCLSI, LCLSII, or NONE 
@@ -278,6 +279,7 @@ begin
          XIL_DEVICE_G         => "ULTRASCALE",
          BOOT_PROM_G          => "NONE",
          DRIVER_TYPE_ID_G     => DRIVER_TYPE_ID_G,
+         AXI_COMMON_CLK_G     => AXI_COMMON_CLK_G,
          DMA_AXIS_CONFIG_G    => DMA_AXIS_CONFIG_G,
          DMA_SIZE_G           => DMA_SIZE_G,
          EN_XVC_G             => false )

@@ -64,7 +64,9 @@ namespace Pds {
                 printf("time [%u.%09u]  sync [%u]\n",
                        _tshigh, _tslow,
                        sync());
-                printf("####@ 0x%x 0x%x 0x%x %llu\n", _info[0], _info[1], streamMask(), (unsigned long long) timeStamp());
+                //printf("####@ 0x%x 0x%x 0x%x %llu\n", _info[0], _info[1], streamMask(), (unsigned long long) timeStamp());
+                time_t t = timeStamp()>>32;
+                printf("####@ 0x%x 0x%x 0x%x %s\n", _info[0], _info[1], streamMask(), ctime(&t));
             }
         private:
             uint32_t _reserved[2];

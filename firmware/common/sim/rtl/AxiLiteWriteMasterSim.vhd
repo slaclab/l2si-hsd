@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-03-25
--- Last update: 2018-12-28
+-- Last update: 2021-04-27
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -32,7 +32,8 @@ use surf.AxiLitePkg.all;
 use work.AxiLiteSimPkg.all;
 
 entity AxiLiteWriteMasterSim is
-  generic ( CMDS : AxiLiteWriteCmdArray );
+  generic ( CMDS         : AxiLiteWriteCmdArray;
+            DELAY_CLKS_G : integer := 0 );
   port ( clk    : in sl;
          rst    : in  sl;
          master : out AxiLiteWriteMasterType;
@@ -43,11 +44,13 @@ end entity;
 architecture behavior of AxiLiteWriteMasterSim is
 
   type RegType is record
-    icmd : integer;
+    icmd   : integer;
+    delay  : integer;
     master : AxiLiteWriteMasterType;
   end record;
   constant REG_INIT_C : RegType := (
-    icmd => 0,
+    icmd   => 0,
+    delay  => 0,
     master => AXI_LITE_WRITE_MASTER_INIT_C
     );
   signal r   : RegType := REG_INIT_C;
@@ -72,13 +75,18 @@ begin
       v.master.bready := '0';
     end if;
 
-    if v.master.bready = '0' and r.icmd < CMDS'length then
-      v.master.awaddr  := CMDS(r.icmd).addr;
-      v.master.awvalid := '1';
-      v.master.wdata   := CMDS(r.icmd).value;
-      v.master.wvalid  := '1';
-      v.master.bready  := '1';
-      v.icmd           := r.icmd + 1;
+    if v.master.bready = '0' then
+      if r.delay = DELAY_CLKS_G and r.icmd < CMDS'length then
+        v.master.awaddr  := CMDS(r.icmd).addr;
+        v.master.awvalid := '1';
+        v.master.wdata   := CMDS(r.icmd).value;
+        v.master.wvalid  := '1';
+        v.master.bready  := '1';
+        v.icmd           := r.icmd + 1;
+        v.delay          := 0;
+      else
+        v.delay := r.delay + 1;
+      end if;
     end if;
 
     if rst = '1' then

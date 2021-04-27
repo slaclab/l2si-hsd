@@ -22,6 +22,10 @@ namespace Pds {
           rows   = v&0xffff;
           events = v>>16;
         }
+        void dump() const {
+            printf("begin 0x%x  length 0x%x  full 0x%x  free 0x%x\n",
+                   unsigned(_begin), unsigned(_length), unsigned(_full), unsigned(_free));
+        }
       public:
         RegProxy _begin;
         RegProxy _length; // and prescale
@@ -41,6 +45,10 @@ namespace Pds {
           RegProxy v;
           RegProxy rsvd;
         } parms[30];
+        void dump() const {
+          printf("params 0x%x 0x%x 0x%x 0x%x\n",
+                 unsigned(parms[0].v), unsigned(parms[1].v), unsigned(parms[2].v), unsigned(parms[3].v));
+        }
       } _stream[8];
 
     private:

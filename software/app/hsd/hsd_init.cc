@@ -34,6 +34,7 @@ void usage(const char* p) {
   printf("\t-X <reset gtx timing receiver>\n");
   printf("\t-P <reverse gtx rx polarity>\n");
   printf("\t-T <delay> [train ADC]\n");
+  printf("\t-W <hex file for prom load>\n");
   printf("\t-0 <dump raw timing receive buffer>\n");
   printf("\t-1 <dump timing message buffer>\n");
   printf("\t-2 <configure for LCLSII>\n");

@@ -210,6 +210,7 @@ begin  -- rtl
                   DMA_AXIS_CONFIG_G    => DMA_AXIS_CONFIG_C,
                   BUILD_INFO_G         => BUILD_INFO_G,
                   DEVICE_MAP_G         => DEVICE_MAP_C,
+                  AXI_COMMON_CLK_G     => true,   -- sysClk=appClk
                   TIMING_CORE_G        => "LCLSI" )
     port map ( sysClk         => regClk,
                sysRst         => regRst,

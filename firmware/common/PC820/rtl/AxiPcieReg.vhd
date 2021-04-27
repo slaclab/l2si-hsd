@@ -37,6 +37,7 @@ entity AxiPcieReg is
       ROGUE_SIM_PORT_NUM_G : natural range 1024 to 49151 := 8000;
       BUILD_INFO_G         : BuildInfoType;
       DMA_AXIS_CONFIG_G    : AxiStreamConfigType;
+      AXI_COMMON_CLK_G     : boolean                     := false;    
       XIL_DEVICE_G         : string                      := "7SERIES";
       BOOT_PROM_G          : string                      := "BPI";
       DRIVER_TYPE_ID_G     : slv(31 downto 0)            := x"00000000";
@@ -680,7 +681,7 @@ begin
    U_AxiLiteAsync : entity surf.AxiLiteAsync
       generic map (
          TPD_G           => TPD_G,
-         COMMON_CLK_G    => false,
+         COMMON_CLK_G    => AXI_COMMON_CLK_G,
          NUM_ADDR_BITS_G => 24)
       port map (
          -- Slave Interface

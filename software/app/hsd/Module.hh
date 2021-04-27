@@ -13,6 +13,14 @@ namespace Pds {
     class Jtag;
     class PhaseMsmt;
 
+    class FexParams {
+    public:
+      unsigned lo_threshold;
+      unsigned hi_threshold;
+      unsigned rows_before;
+      unsigned rows_after;
+    };
+
     class Module {
     public:
       //
@@ -55,6 +63,13 @@ namespace Pds {
                         unsigned prescale,
                         int      onechannel_input,
                         unsigned streams);
+
+      void sample_init (unsigned length,
+                        unsigned delay,
+                        unsigned prescale,
+                        int      onechannel_input,
+                        unsigned streams,
+                        const FexParams& params);
 
       void trig_lcls  (unsigned eventcode);
       void sync       ();

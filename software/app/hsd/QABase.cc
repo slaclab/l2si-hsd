@@ -12,6 +12,7 @@ void QABase::init()
   csr = v | (1<<28);
   usleep(10);
   csr = v & ~(1<<28);
+  usleep(10000);  // Wait for an evrBus strobe to clear the reset
 }
 
 void QABase::start()
@@ -80,6 +81,7 @@ void QABase::resetDma()
   usleep(10);
   v &= ~(1<<28);
   csr = v;
+  usleep(10000);  // Wait for an evrBus strobe to clear the reset
 }
 
 void QABase::resetFb()

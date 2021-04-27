@@ -618,11 +618,12 @@ uint64_t Module::device_dna() const { return _device_dna(version()); }
 
 void Module::board_status()
 {
+#if 0
   AxiVersion vsn = version();
   printf("Dna: %" PRIx64 "  Serial: %" PRIx64 "\n",
          _device_dna(vsn),
          _fd_value(vsn));
-
+#endif
   p->i2c_sw_control.select(I2cSwitch::LocalBus);
   p->i2c_sw_control.dump();
   
@@ -700,21 +701,50 @@ void Module::sample_init(unsigned length,
                          unsigned delay,
                          unsigned prescale,
                          int      onechannel_input,   // integer
-                         unsigned streams) // bitmask
+                         unsigned streams, // bitmask
+                         const FexParams& params)
 {
   //  p->base.init();  // this will interrupt the other fmc, but I think OK during configure
+  //  p->fex_chan[_fmc]._streams = (streams&0x10) ? 0x10 : streams;
+  //p->fex_chan[_fmc]._streams = 0;
 
   unsigned nrows = (onechannel_input >= 0) ? length/32 : length/8;
 
-  p->fex_chan[_fmc]._streams = streams;
+#define DBG_WRITE(r,v) {                                        \
+    r=v;                                                        \
+    volatile unsigned u = unsigned(r); }
+#define DBG_WRITE(r,v) { r=v; }
+  
   for(unsigned i=0; i<8; i++)
     if (streams & (1<<i)) {
       p->fex_chan[_fmc]._base[i].setGate(delay,nrows);
-      if (i<4)
-        p->fex_chan[_fmc]._stream[i].parms[0].v = i;
+      if (i<4) {
+        DBG_WRITE(p->fex_chan[_fmc]._stream[i].parms[0].v, i);
+      }
+      else {
+        DBG_WRITE(p->fex_chan[_fmc]._stream[i].parms[0].v, params.lo_threshold);
+        DBG_WRITE(p->fex_chan[_fmc]._stream[i].parms[1].v, params.hi_threshold);
+        DBG_WRITE(p->fex_chan[_fmc]._stream[i].parms[2].v, params.rows_before);
+        DBG_WRITE(p->fex_chan[_fmc]._stream[i].parms[3].v, params.rows_after);
+        DBG_WRITE(p->fex_chan[_fmc]._stream[i].parms[0].v, params.lo_threshold);
+        DBG_WRITE(p->fex_chan[_fmc]._stream[i].parms[1].v, params.hi_threshold);
+      }
     }
 
+#undef DBG_WRITE
+  
   p->setAdcMux(onechannel_input>=0, onechannel_input, _fmc);
+
+  for(unsigned i=0; i<8; i++) {
+    if (streams & (1<<i) ) {
+      printf("--FexCfg[%u]--\n",i);
+      p->fex_chan[_fmc]._base  [i].dump();
+      p->fex_chan[_fmc]._stream[i].dump();
+    }
+  }
+
+  p->fex_chan[_fmc]._streams = streams;
+  //  p->fex_chan[_fmc]._streams = ((streams&0x10) ? 0x10 : streams);
 
   //  flush out all the old
   { printf("flushing\n");
@@ -732,6 +762,20 @@ void Module::sample_init(unsigned length,
   }
     
   p->base.resetCounts();
+}
+
+void Module::sample_init(unsigned length, 
+                         unsigned delay,
+                         unsigned prescale,
+                         int      onechannel_input,   // integer
+                         unsigned streams) // bitmask
+{
+  FexParams p;
+  p.lo_threshold = 0;
+  p.hi_threshold = 0;
+  p.rows_before  = 1;
+  p.rows_after   = 1;
+  sample_init(length, delay, prescale, onechannel_input, streams, p);
 }
 
 void Module::trig_lcls  (unsigned eventcode)

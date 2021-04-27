@@ -22,6 +22,7 @@ void RegProxy::initialize(int fd, const void* base)
 
 RegProxy& RegProxy::operator=(const unsigned r)
 {
+  //  printf("Writing 0x%x to 0x%lx\n",r,(char*)this-_base);
   dmaWriteRegister(_fd, (char*)this-_base, r);
   return *this;
 }
@@ -48,5 +49,6 @@ RegProxy::operator unsigned() const
 {
   uint32_t r;
   dmaReadRegister(_fd, (char*)this-_base, &r);
+  //  printf("Read 0x%x from 0x%lx\n",r,(char*)this-_base);
   return r;
 }
