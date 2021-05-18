@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-09-15
+-- Last update: 2021-05-18
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -93,7 +93,8 @@ end hsd_fex_packed;
 
 architecture mapping of hsd_fex_packed is
 
-  constant LATENCY_C     : integer := 0;
+  constant DEBUG_MBP_C   : boolean := false;
+  constant DEBUG_DAT_C   : boolean := false;
   constant COUNT_BITS_C  : integer := 14;
   constant SKIP_T        : slv(COUNT_BITS_C-1 downto 0) := toSlv(4096,COUNT_BITS_C);
   constant TDATA_BYTES_C : integer := 2*ILV_G*ROW_SIZE;
@@ -143,6 +144,10 @@ architecture mapping of hsd_fex_packed is
     free       : slv     (15 downto 0);
     nfree      : slv     ( 4 downto 0);
     axisReg    : AxisRegType;
+    sperror    : slv     ( 2 downto 0);
+    ilerror    : slv     ( 2 downto 0);
+    rsperror   : slv     ( ROW_SIZE-1 downto 0);
+    rspdata    : slv     (63 downto 0);
   end record;
   constant REG_INIT_C : RegType := (
     tout       => (others=>(others=>'0')),
@@ -162,7 +167,11 @@ architecture mapping of hsd_fex_packed is
     wraddr     => (others=>'0'),
     free       => (others=>'0'),
     nfree      => (others=>'0'),
-    axisReg    => AXIS_REG_INIT_C );
+    axisReg    => AXIS_REG_INIT_C,
+    sperror    => (others=>'0'),
+    ilerror    => (others=>'0'),
+    rsperror   => (others=>'0'),
+    rspdata    => (others=>'0') );
 
   signal r    : RegType := REG_INIT_C;
   signal r_in : RegType;
@@ -209,12 +218,85 @@ architecture mapping of hsd_fex_packed is
     cache.state := EMPTY_S;
     cache.trigd := WAIT_T;
   end procedure;
-  
+
 begin
 
   --
   --  Something in this block crashes Vivado
   --
+  GENDEBUG_DAT : if DEBUG_DAT_C generate
+    --
+    --  detect error conditions
+    --
+    -- U_ILA : ila_0
+    --   port map ( clk    => clk,
+    --              probe0( 63 downto   0) => r.rspdata,
+    --              probe0(119 downto  64) => (others=>'0'),
+    --              probe0(127 downto 120) => r.rsperror,
+    --              probe0(135 downto 128) => idout( 0)(7 downto 0),
+    --              probe0(143 downto 136) => idout( 1)(7 downto 0),
+    --              probe0(151 downto 144) => idout( 2)(7 downto 0),
+    --              probe0(159 downto 152) => idout( 3)(7 downto 0),
+    --              probe0(167 downto 160) => idout( 4)(7 downto 0),
+    --              probe0(175 downto 168) => idout( 5)(7 downto 0),
+    --              probe0(183 downto 176) => idout( 6)(7 downto 0),
+    --              probe0(191 downto 184) => idout( 7)(7 downto 0),
+    --              probe0(199 downto 192) => idout( 8)(7 downto 0),
+    --              probe0(207 downto 200) => idout( 9)(7 downto 0),
+    --              probe0(215 downto 208) => idout(10)(7 downto 0),
+    --              probe0(223 downto 216) => idout(11)(7 downto 0),
+    --              probe0(231 downto 224) => idout(12)(7 downto 0),
+    --              probe0(239 downto 232) => idout(13)(7 downto 0),
+    --              probe0(247 downto 240) => idout(14)(7 downto 0),
+    --              probe0(250 downto 248) => r.sperror,
+    --              probe0(253 downto 251) => r.ilerror,
+    --              probe0(255 downto 254) => (others=>'0') );
+  end generate;
+  
+  GENDEBUG_MBP : if DEBUG_MBP_C generate
+    U_ILA : ila_0
+      port map ( clk      => clk,
+                 probe0(  7 downto   0) => r.axisReg.axisMaster.tData(  7 downto   0),
+                 probe0( 15 downto   8) => r.axisReg.axisMaster.tData( 23 downto  16),
+                 probe0( 23 downto  16) => r.axisReg.axisMaster.tData( 39 downto  32),
+                 probe0( 31 downto  24) => r.axisReg.axisMaster.tData( 55 downto  48),
+                 probe0( 39 downto  32) => r.axisReg.axisMaster.tData( 71 downto  64),
+                 probe0( 47 downto  40) => r.axisReg.axisMaster.tData( 87 downto  80),
+                 probe0( 55 downto  48) => r.axisReg.axisMaster.tData(103 downto  96),
+                 probe0( 63 downto  56) => r.axisReg.axisMaster.tData(119 downto 112),
+                 probe0( 71 downto  64) => r.axisReg.axisMaster.tData(135 downto 128),
+                 probe0( 79 downto  72) => r.axisReg.axisMaster.tData(151 downto 144),
+                 probe0( 87 downto  80) => r.axisReg.axisMaster.tData(167 downto 160),
+                 probe0( 95 downto  88) => r.axisReg.axisMaster.tData(183 downto 176),
+                 probe0(103 downto  96) => r.axisReg.axisMaster.tData(199 downto 192),
+                 probe0(111 downto 104) => r.axisReg.axisMaster.tData(215 downto 208),
+                 probe0(119 downto 112) => r.axisReg.axisMaster.tData(231 downto 224),
+                 probe0(           120) => r.axisReg.axisMaster.tValid,
+                 probe0(           121) => r.axisReg.axisMaster.tLast,
+                 probe0(           122) => maxisSlave.tReady,
+                 probe0(127 downto 123) => (others=>'0'),
+                 probe0(135 downto 128) => taxisMaster.tData(  7 downto   0),
+                 probe0(143 downto 136) => taxisMaster.tData( 23 downto  16),
+                 probe0(151 downto 144) => taxisMaster.tData( 39 downto  32),
+                 probe0(159 downto 152) => taxisMaster.tData( 55 downto  48),
+                 probe0(167 downto 160) => taxisMaster.tData( 71 downto  64),
+                 probe0(175 downto 168) => taxisMaster.tData( 87 downto  80),
+                 probe0(183 downto 176) => taxisMaster.tData(103 downto  96),
+                 probe0(191 downto 184) => taxisMaster.tData(119 downto 112),
+                 probe0(199 downto 192) => taxisMaster.tData(135 downto 128),
+                 probe0(207 downto 200) => taxisMaster.tData(151 downto 144),
+                 probe0(215 downto 208) => taxisMaster.tData(167 downto 160),
+                 probe0(223 downto 216) => taxisMaster.tData(183 downto 176),
+                 probe0(231 downto 224) => taxisMaster.tData(199 downto 192),
+                 probe0(239 downto 232) => taxisMaster.tData(215 downto 208),
+                 probe0(247 downto 240) => taxisMaster.tData(231 downto 224),
+                 probe0(           248) => taxisMaster.tValid,
+                 probe0(           249) => taxisMaster.tLast,
+                 probe0(           250) => taxisSlave.tReady,
+                 probe0(255 downto 251) => (others=>'0'));
+
+  end generate;
+
   GEN_DEBUG : if DEBUG_G generate
     GEN_TIN : for i in 0 to 7 generate
       tin0 (i) <= lopen when (i = lopen_phase) else '0';
@@ -316,6 +398,9 @@ begin
     v.tout    := tout;
     v.douten  := douten;
     v.tin     := (others=>"00");
+    v.sperror := (others=>'0');
+    v.ilerror := (others=>'0');
+    v.rsperror:= (others=>'0');
 
     --  Cache the skip status (begin)
     if lopen = '1' then
@@ -526,10 +611,31 @@ begin
         q.axisMaster.tData(rddata'range) := rddata;
         q.rdaddr := q.rdaddr+1;
         q.first  := '0';
+
+        for j in 0 to ROW_SIZE-1 loop
+          if (q.axisMaster.tKeep(j*2*ILV_G)='1' and rddata(64*j+15)='1'
+              and (rddata(64*j+31 downto 64*j+16)/=x"8000" or
+                   rddata(64*j+47 downto 64*j+32)/=x"8000" or
+                   rddata(64*j+63 downto 64*j+48)/=x"8000")) then
+            v.rsperror(j) := '1';
+            v.rspdata     := rddata(64*j+63 downto 64*j);
+          end if;
+        end loop;
       end if;
       v.axisReg := q;
     end if;
 
+    for i in 0 to 2 loop
+      if r.douten(0)='1' then
+        if (r.dout(0)(15)='1' and r.dout(0)(16*i+31 downto 16*i+16)/=x"8000") then
+          v.sperror(i) := '1';
+        end if;
+        if (r.dout(0)(15)='0' and r.dout(0)(16*i+31 downto 16*i+16)/=r.dout(0)(15 downto 0)) then
+          v.ilerror(i) := '1';
+        end if;
+      end if;
+    end loop;
+    
     if clear='1' then
       v := REG_INIT_C;
     end if;

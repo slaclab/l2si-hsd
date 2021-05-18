@@ -1,10 +1,10 @@
 ################################################################################
 # Clock constraints
 ################################################################################
-create_clock -name adr_p_1 -period 1.600 [get_ports adr_p[1]]       ;# 625 MHz
-create_clock -name bdr_p_1 -period 1.600 [get_ports bdr_p[1]]       ;# 625 MHz
-create_clock -name cdr_p_1 -period 1.600 [get_ports cdr_p[1]]       ;# 625 MHz
-create_clock -name ddr_p_1 -period 1.600 [get_ports ddr_p[1]]       ;# 625 MHz
+create_clock -name adr_p_1 -period 1.562 [get_ports adr_p[1]]       ;# 625 MHz
+create_clock -name bdr_p_1 -period 1.562 [get_ports bdr_p[1]]       ;# 625 MHz
+create_clock -name cdr_p_1 -period 1.562 [get_ports cdr_p[1]]       ;# 625 MHz
+create_clock -name ddr_p_1 -period 1.562 [get_ports ddr_p[1]]       ;# 625 MHz
 
 create_clock -name clk_to_fpga_p_1 -period 2.000 [get_ports clk_to_fpga_p[1]] ;#  500 MHz
 create_clock -name ext_trigger_p_1 -period 100.0 [get_ports ext_trigger_p[1]] ;# 10 mhz

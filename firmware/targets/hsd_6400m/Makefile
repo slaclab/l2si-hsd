@@ -19,8 +19,9 @@ target: prom
 # PRJ_VERSION = 00000009  Use common TriggerEventManager
 # PRJ_VERSION = 0000000A  Simplify trigger/shift logic
 # PRJ_VERSION = 0000000B  Synchr l0,l1 bits+tag in CDC.  Validate tag.
+# PRJ_VERSION = 0000000C  Add l2si-core trigfifo-fix
 #
-export PRJ_VERSION = 0000000B
+export PRJ_VERSION = 0000000C
 
 # Define target part
 export PRJ_PART = XCKU085-FLVB1760-2-E

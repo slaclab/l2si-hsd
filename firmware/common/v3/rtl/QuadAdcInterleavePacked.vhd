@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-03-19
+-- Last update: 2021-05-04
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -206,7 +206,8 @@ architecture mapping of QuadAdcInterleavePacked is
   signal sData : slv(127 downto 0);
 
   constant DEBUG_C : boolean := DEBUG_G;
-
+  constant DEBUG_MBP_C : boolean := false;
+  
   component ila_0
     port ( clk : in sl;
            probe0 : in slv(255 downto 0) );
@@ -231,12 +232,56 @@ begin  -- mapping
   end generate;
   axisMaster_tData <= axisMasterTmp.tData(63 downto 0);
   axisMaster_tKeep <= axisMasterTmp.tKeep(63 downto 0);
+
+  GENDEBUG_MBP : if DEBUG_MBP_C generate
+    U_ILA : ila_0
+      port map ( clk      => clk,
+                 probe0(  7 downto   0) => r.axisMaster.tData(  7 downto   0),
+                 probe0( 15 downto   8) => r.axisMaster.tData( 23 downto  16),
+                 probe0( 23 downto  16) => r.axisMaster.tData( 39 downto  32),
+                 probe0( 31 downto  24) => r.axisMaster.tData( 55 downto  48),
+                 probe0( 39 downto  32) => r.axisMaster.tData( 71 downto  64),
+                 probe0( 47 downto  40) => r.axisMaster.tData( 87 downto  80),
+                 probe0( 55 downto  48) => r.axisMaster.tData(103 downto  96),
+                 probe0( 63 downto  56) => r.axisMaster.tData(119 downto 112),
+                 probe0( 71 downto  64) => r.axisMaster.tData(135 downto 128),
+                 probe0( 79 downto  72) => r.axisMaster.tData(151 downto 144),
+                 probe0( 87 downto  80) => r.axisMaster.tData(167 downto 160),
+                 probe0( 95 downto  88) => r.axisMaster.tData(183 downto 176),
+                 probe0(103 downto  96) => r.axisMaster.tData(199 downto 192),
+                 probe0(111 downto 104) => r.axisMaster.tData(215 downto 208),
+                 probe0(119 downto 112) => r.axisMaster.tData(231 downto 224),
+                 probe0(           120) => r.axisMaster.tValid,
+                 probe0(           121) => r.axisMaster.tLast,
+                 probe0(           122) => maxisSlave.tReady,
+                 probe0(127 downto 123) => (others=>'0'),
+                 probe0(135 downto 128) => axisMasterTmp.tData(  7 downto   0),
+                 probe0(143 downto 136) => axisMasterTmp.tData( 23 downto  16),
+                 probe0(151 downto 144) => axisMasterTmp.tData( 39 downto  32),
+                 probe0(159 downto 152) => axisMasterTmp.tData( 55 downto  48),
+                 probe0(167 downto 160) => axisMasterTmp.tData( 71 downto  64),
+                 probe0(175 downto 168) => axisMasterTmp.tData( 87 downto  80),
+                 probe0(183 downto 176) => axisMasterTmp.tData(103 downto  96),
+                 probe0(191 downto 184) => axisMasterTmp.tData(119 downto 112),
+                 probe0(199 downto 192) => axisMasterTmp.tData(135 downto 128),
+                 probe0(207 downto 200) => axisMasterTmp.tData(151 downto 144),
+                 probe0(215 downto 208) => axisMasterTmp.tData(167 downto 160),
+                 probe0(223 downto 216) => axisMasterTmp.tData(183 downto 176),
+                 probe0(231 downto 224) => axisMasterTmp.tData(199 downto 192),
+                 probe0(239 downto 232) => axisMasterTmp.tData(215 downto 208),
+                 probe0(247 downto 240) => axisMasterTmp.tData(231 downto 224),
+                 probe0(           248) => axisMasterTmp.tValid,
+                 probe0(           249) => axisMasterTmp.tLast,
+                 probe0(           250) => axisSlaveTmp.tReady,
+                 probe0(255 downto 251) => (others=>'0'));
+
+  end generate;
   
   GENDEBUG : if DEBUG_C generate
 
     r_fexb <= resize(r.fexb,r_fexb'length);
     r_fexn <= toSlv(r.fexn,r_fexn'length);
-    
+
     U_ILA : ila_0
       port map ( clk       => clk,
                  probe0(0) => rst,

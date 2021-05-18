@@ -1,15 +1,15 @@
 ################################################################################
 # Clock constraints
 ################################################################################
-create_clock -period 1.600 -name adr_p_0 [get_ports {adr_p[0]}]
-create_clock -period 1.600 -name bdr_p_0 [get_ports {bdr_p[0]}]
-create_clock -period 1.600 -name cdr_p_0 [get_ports {cdr_p[0]}]
-create_clock -period 1.600 -name ddr_p_0 [get_ports {ddr_p[0]}]
+create_clock -period 1.562 -name adr_p_0 [get_ports {adr_p[0]}]
+create_clock -period 1.562 -name bdr_p_0 [get_ports {bdr_p[0]}]
+create_clock -period 1.562 -name cdr_p_0 [get_ports {cdr_p[0]}]
+create_clock -period 1.562 -name ddr_p_0 [get_ports {ddr_p[0]}]
 
 create_clock -period 2.000 -name clk_to_fpga_p_0 [get_ports {clk_to_fpga_p[0]}]
 create_clock -period 100.000 -name ext_trigger_p_0 [get_ports {ext_trigger_p[0]}]
 
-create_generated_clock -name adr_phy_clock -period 1.600 [get_pins U_APP/U_MMCM/U_MMCM/CLKOUT0]
+create_generated_clock -name adr_phy_clock -period 1.562 [get_pins U_APP/U_MMCM/U_MMCM/CLKOUT0]
 set_clock_groups -asynchronous -group [get_clocks adr_p_0] -group [get_clocks [get_clocks -of_objects [get_pins U_APP?U_MMCM?U_MMCM/CLKOUT0]]]
 
 set_clock_groups -name adr_phy_clocks -asynchronous -group [get_clocks -include_generated_clocks adr_p_0]
