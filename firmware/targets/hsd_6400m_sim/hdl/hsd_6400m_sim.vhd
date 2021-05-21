@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2020-07-31
+-- Last update: 2021-05-21
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -44,6 +44,7 @@ use work.QuadAdcPkg.all;
 use surf.SsiPkg.all;
 use surf.AxiPkg.all;
 use work.FmcPkg.all;
+use work.AxiLiteSimPkg.all;
 
 library unisim;
 use unisim.vcomponents.all;
@@ -65,7 +66,17 @@ architecture top_level_app of hsd_6400m_sim is
    signal axilWriteSlave      : AxiLiteWriteSlaveType;
    signal axilReadMaster      : AxiLiteReadMasterType := AXI_LITE_READ_MASTER_INIT_C;
    signal axilReadSlave       : AxiLiteReadSlaveType;
-    -- DMA
+
+   constant ADC_INDEX_C       : integer := 0;
+   constant TEM_INDEX_C       : integer := 1;
+   constant NUM_AXI_MASTERS_C : integer := 2;
+   constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(1 downto 0) := genAxiLiteConfig( 2, x"00000000", 17, 16 );
+   signal mAxilWriteMasters : AxiLiteWriteMasterArray(NUM_AXI_MASTERS_C-1 downto 0);
+   signal mAxilWriteSlaves  : AxiLiteWriteSlaveArray (NUM_AXI_MASTERS_C-1 downto 0);
+   signal mAxilReadMasters  : AxiLiteReadMasterArray (NUM_AXI_MASTERS_C-1 downto 0);
+   signal mAxilReadSlaves   : AxiLiteReadSlaveArray  (NUM_AXI_MASTERS_C-1 downto 0);
+   
+   -- DMA
    signal dmaClk            : sl;
    signal dmaRst            : slv(NFMC_C-1 downto 0);
    signal dmaIbMaster       : AxiStreamMasterArray(NFMC_C-1 downto 0);
@@ -147,7 +158,40 @@ architecture top_level_app of hsd_6400m_sim is
    signal fmcClk  : slv(NFMC_C-1 downto 0);
    signal pgpRxOut       : Pgp3RxOutType;
    signal msgConfig    : XpmPartMsgConfigType := XPM_PART_MSG_CONFIG_INIT_C;
-   
+
+   constant CMDS_C : AxiLiteWriteCmdArray(0 to 25) := (
+     --  Chip Adc Reg
+     ( addr => x"00000010", value => x"000000ff" ), -- assert DMA rst
+     ( addr => x"00000010", value => x"00000000" ), -- release DMA rst
+     ( addr => x"00000014", value => x"40000000" ), -- 1Hz dont care
+     ( addr => x"00000018", value => x"00000001" ), -- enable 1 channel
+     ( addr => x"0000001C", value => x"00000100" ), -- 256 samples
+     -- QuadAdcInterleavePacked
+     ( addr => x"00001010", value => x"00000004" ), -- fexBegin
+     ( addr => x"00001014", value => x"00002000" ), -- fexLen/prescale
+     ( addr => x"00001018", value => x"00040C00" ), -- almostFull
+     ( addr => x"00001020", value => x"00000004" ), -- fexBegin
+     ( addr => x"00001024", value => x"00100064" ), -- fexLen/prescale
+     ( addr => x"00001028", value => x"00040C00" ), -- almostFull
+     ( addr => x"00001030", value => x"00000004" ), -- fexBegin
+     ( addr => x"00001034", value => x"00200064" ), -- fexLen/prescale
+     ( addr => x"00001038", value => x"00040C00" ), -- almostFull
+     ( addr => x"00001210", value => x"00000801" ), -- prescale
+     ( addr => x"00001218", value => x"0000080E" ), -- fexLen/delay
+     ( addr => x"00001220", value => x"00000001" ), -- almostFull
+     ( addr => x"00001228", value => x"00000002" ), -- prescale
+     ( addr => x"00001000", value => x"00000001" ), -- fexEnable
+     -- Chip Adc Reg
+     ( addr => x"00000010", value => x"C0000000" ), -- enable
+     -- XpmMessageAligner
+     ( addr => x"00018020", value => x"0a0b0c0d" ), -- feedback Id
+     -- Trigger Event Buffer
+     ( addr => x"00019004", value => x"00000000" ), -- partition
+     ( addr => x"00019008", value => x"00000010" ), -- fifoPauseThresh
+     ( addr => x"0001900C", value => x"00000000" ), -- triggerDelay
+     ( addr => x"00019000", value => x"00000003" ), -- enable
+     ( addr => x"00019000", value => x"00000001" ) ); -- enable
+
 begin
 
    dmaData <= dmaIbMaster(0).tData(dmaData'range);
@@ -237,9 +281,9 @@ begin
                 bpRxClk    => '0',
                 bpRxClkRst => '0',
                 bpRxLinkUp => (others=>'0'),
-                bpRxLinkFull => (others=>(others=>'0')),
+                bpRxLinkFull => (others=>(others=>'0')) );
                 --
-                msgConfig    => msgConfig );
+--                msgConfig    => msgConfig );
 
    timingBus.modesel <= '1';
    U_RxLcls : entity lcls_timing_core.TimingFrameRx
@@ -256,14 +300,21 @@ begin
   fmcClk <= (others=>phyClk);
   
   U_Core : entity work.DualAdcCore
-    generic map ( DMA_STREAM_CONFIG_G => AXIS_CONFIG_C )
+    generic map ( DMA_STREAM_CONFIG_G => AXIS_CONFIG_C,
+                  BASE_ADDR_C         => AXI_CROSSBAR_MASTERS_CONFIG_C(ADC_INDEX_C).baseAddr,
+                  TEM_ADDR_C          => AXI_CROSSBAR_MASTERS_CONFIG_C(TEM_INDEX_C).baseAddr )
     port map (
       axiClk              => regClk,
       axiRst              => regRst,
-      axilWriteMaster     => axilWriteMaster,
-      axilWriteSlave      => axilWriteSlave ,
-      axilReadMaster      => axilReadMaster ,
-      axilReadSlave       => axilReadSlave  ,
+      axilWriteMaster     => mAxilWriteMasters(ADC_INDEX_C),
+      axilWriteSlave      => mAxilWriteSlaves (ADC_INDEX_C),
+      axilReadMaster      => mAxilReadMasters (ADC_INDEX_C),
+      axilReadSlave       => mAxilReadSlaves  (ADC_INDEX_C),
+      --
+      temAxilWriteMaster  => mAxilWriteMasters(TEM_INDEX_C),
+      temAxilWriteSlave   => mAxilWriteSlaves (TEM_INDEX_C),
+      temAxilReadMaster   => mAxilReadMasters (TEM_INDEX_C),
+      temAxilReadSlave    => mAxilReadSlaves  (TEM_INDEX_C),
       -- DMA
       dmaClk              => dmaClk,
       dmaRst              => dmaRst,
@@ -286,140 +337,33 @@ begin
       --
       trigSlot            => trigSlot );
 
-   process is
-     procedure wreg(addr : integer; data : slv(31 downto 0)) is
-     begin
-       wait until regClk='0';
-       axilWriteMaster.awaddr  <= toSlv(addr,32);
-       axilWriteMaster.awvalid <= '1';
-       axilWriteMaster.wdata   <= data;
-       axilWriteMaster.wvalid  <= '1';
-       axilWriteMaster.bready  <= '1';
-       wait until regClk='1';
-       wait until axilWriteSlave.bvalid='1';
-       wait until regClk='0';
-       wait until regClk='1';
-       wait until regClk='0';
-       axilWriteMaster.awvalid <= '0';
-       axilWriteMaster.wvalid  <= '0';
-       axilWriteMaster.bready  <= '0';
-       wait for 50 ns;
-     end procedure;
-     variable a : integer;
-   begin
-    wait until regRst='0';
+  U_XBAR : entity surf.AxiLiteCrossbar
+    generic map (
+      DEC_ERROR_RESP_G   => AXI_RESP_OK_C,
+      NUM_SLAVE_SLOTS_G  => 1,
+      NUM_MASTER_SLOTS_G => NUM_AXI_MASTERS_C,
+      MASTERS_CONFIG_G   => AXI_CROSSBAR_MASTERS_CONFIG_C)
+    port map (
+      axiClk           => regClk,
+      axiClkRst        => regRst,
+      sAxiWriteMasters(0) => axilWriteMaster,
+      sAxiWriteSlaves (0) => axilWriteSlave,
+      sAxiReadMasters (0) => axilReadMaster,
+      sAxiReadSlaves  (0) => axilReadSlave,
+      mAxiWriteMasters => mAxilWriteMasters,
+      mAxiWriteSlaves  => mAxilWriteSlaves,
+      mAxiReadMasters  => mAxilReadMasters,
+      mAxiReadSlaves   => mAxilReadSlaves);
 
-    --  Address map change
-    --  DualAdcCore: 0000_0000  (ChipAdcCore[0])
-    --                    0000  ChipAdcReg
-    --                    1000  (ChipAdcEvent)
-    --                    1000  QuadAdcInterleavePacked
-    --                    1100  hsd_fex_packed[0]
-    --                    1200  hsd_fex_packed[1]
-    --               0000_2000  (ChipAdcCore[1])
-    --               0000_4000  TriggerEventManager
-    --                    4000  (XpmMessageAligner)
-    --                    4000  partitionDelays[0..7]
-    --                    4020  xpmId (feedbackId)
-    --                    4100  (TriggerEventBuffer[0])
-    --                    4100  enable
-    --                    4104  partition
-    --                    4108  overflows,fifoWrCnt
-    --                    410c  linkAddress (received)
-    --                    4110  l0Count
-    --                    4114  l1aCount
-    --                    411c  l1rCount
-    --                    4120  triggerDelay
-    --                    4134  transitionCount
-    --                    4138  validCount
-    --                    413c  triggerCount
-    --                    4140  message.partitionAddr (unlatched)
-    --                    4144  message.partitionWord[0] (unlatched)
-    --                    414c  resetCounters
-    --                    4150  fullToTrig
-    --                    4154  nfullToTrig
-    --                    4200  (TriggerEventBuffer[1])
-    
-    --  ChipAdcReg
-    wait for 20 ns;
-    for i in 0 to 1 loop
-      a := 1024*8*i;
-      wreg(a+16,x"000000ff");  -- assert DMA rst
-    end loop;
-    
-    wait for 1200 ns;
-    for i in 0 to 1 loop
-      a := 1024*8*i;
-      wreg(a+16,x"00000000");  -- release DMA rst
-      wreg(a+20,x"40000000");  -- 1MHz, dont-care
-      wreg(a+24,x"00000001");  -- enable 1 channel
---      wreg(a+24,x"00000003");  -- enable 2 channels
-      wreg(a+28,x"00000100");  -- 256 samples
-    end loop;
-
-    -- QuadAdcInterleavePacked
-    wait for 1200 ns;
-    for i in 0 to 1 loop
-      a := 1024*8*i + 1024*4;
-      wreg(a+16,x"00000000"); -- prescale
-      wreg(a+20,x"00640004"); -- fexLength/Delay
-      wreg(a+24,x"00040C00"); -- almostFull
-      wreg(a+32,x"00000000"); -- prescale
-      wreg(a+36,x"00640004"); -- fexLength/Delay
-      wreg(a+40,x"00040C00"); -- almostFull
-      wreg(a+48,x"00000000"); -- prescale
-      wreg(a+52,x"00640004"); -- fexLength/Delay
-      wreg(a+56,x"00040C00"); -- almostFull
---      wreg(a+256*2+16,x"00000000");  -- xlo
---      wreg(a+256*2+24,x"00000fff");  -- xhi
-      wreg(a+256*2+16,x"00000801");  -- xlo
-      wreg(a+256*2+24,x"0000080e");  -- xhi
-      wreg(a+256*2+32,x"00000001");  -- tpre
-      wreg(a+256*2+40,x"00000002");  -- tpost
-      --wreg(a+256*3+16,x"00000040");
-      --wreg(a+256*3+24,x"000003c0");
-      --wreg(a+256*3+32,x"00000003");
-      --wreg(a+256*3+40,x"00000002");
-      --wreg(a+ 0,x"00000042"); -- fexEnable
-      wreg(a+ 0,x"00000001"); -- fexEnable
-    end loop;
-    wait for 600 ns;
-
-    -- ChipAdcReg
-    a := 0;
-    wreg(a+16,x"c0000000");  -- enable
-    a := 1024*8;
-    wreg(a+16,x"c0000000");  -- enable
-
-    -- XpmMessageAligner
-    a := 1024*16+32;
-    wreg(a,x"0a0b0c0d"); -- feedback Id
-
-    -- TriggerEventBuffer
-    for i in 0 to 1 loop
-      a := 1024*16+256*(i+1);
-      wreg(a+ 4,x"00000000"); -- partition
-      wreg(a+ 8,x"00000010"); -- fifoPauseThresh
-      wreg(a+12,x"00000000"); -- triggerDelay
-      wreg(a+ 0,x"00000003"); -- enable
-    end loop;
-
-    axilDone <= '1';
-
-    wait for 100 us;
-
-    for i in 1 to 10 loop
-      msgConfig.header <= '1' & toSlv(i,7);
-      wait until regClk='0';
-      msgConfig.insert <= '1';
-      wait until regClk='1';
-      wait until regClk='0';
-      msgConfig.insert <= '0';
-      wait for 40 us;
-    end loop;
-
-  end process;
-
+   U_AxiLite : entity work.AxiLiteWriteMasterSim
+     generic map ( CMDS => CMDS_C,
+                   DELAY_CLKS_G => 0 )
+     port map ( clk  => regClk,
+                rst  => regRst,
+                master => axilWriteMaster,
+                slave  => axilWriteSlave,
+                done   => open );
+   
   U_XTC : entity work.HsdXtc
     generic map ( filename => "hsd.xtc" )
     port map ( axisClk    => dmaClk,

@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-05-18
+-- Last update: 2021-05-21
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ architecture mapping of hsd_fex_packed is
     dout       : Slv64Array(ROW_SIZE downto 0);    -- cached data from FEX
     douten     : slv(ROW_IDXB-1 downto 0);         -- cached # to write from FEX (0 or ROW_SIZE)
     tin        : Slv2Array(ROW_SIZE-1 downto 0);
-    nopen      : integer range 0 to 15;
+    nopen      : slv(MAX_OVL_BITS_C-1 downto 0);
     skip       : slv(15 downto 0);
     iempty     : slv(MAX_OVL_BITS_C-1 downto 0);
     iopened    : slv(MAX_OVL_BITS_C-1 downto 0);
@@ -138,6 +138,7 @@ architecture mapping of hsd_fex_packed is
     cache      : CacheArray(MAX_OVL_C-1 downto 0);
     rdtail     : slv(RAM_ADDR_WIDTH_C-1 downto 0);
     wrfull     : sl;
+    sink       : sl;
     wrword     : slv(IDX_BITS downto 0);
     wrdata     : Slv64Array(2*ROW_SIZE downto 0);  -- data queued for RAM
     wraddr     : slv(RAM_ADDR_WIDTH_C-1 downto 0);
@@ -154,7 +155,7 @@ architecture mapping of hsd_fex_packed is
     dout       => (others=>(others=>'0')),
     douten     => (others=>'0'),
     tin        => (others=>(others=>'0')),
-    nopen      => 0,
+    nopen      => (others=>'0'),
     skip       => (others=>'0'),
     iempty     => (others=>'0'),
     iopened    => (others=>'0'),
@@ -162,6 +163,7 @@ architecture mapping of hsd_fex_packed is
     cache      => (others=>CACHE_INIT_C),
     rdtail     => (others=>'0'),
     wrfull     => '0',
+    sink       => '0',
     wrword     => (others=>'0'),
     wrdata     => (others=>(others=>'0')),
     wraddr     => (others=>'0'),
@@ -394,6 +396,7 @@ begin
     v := r;
     
     v.wrfull  := '0';
+    v.sink    := '0';
     v.dout    := dout;
     v.tout    := tout;
     v.douten  := douten;
@@ -404,7 +407,7 @@ begin
 
     --  Cache the skip status (begin)
     if lopen = '1' then
-      v.skip(r.nopen) := lskip;
+      v.skip(conv_integer(r.nopen)) := lskip;
       v.tin(conv_integer(lopen_phase ))(0) := not lskip;
     end if;
     
@@ -432,6 +435,8 @@ begin
       v.wrdata(ROW_SIZE downto 0) := r.wrdata(2*ROW_SIZE downto ROW_SIZE);
       if r.free/=0 then
         v.wraddr := r.wraddr+1;
+      else
+        v.sink := '1';
       end if;
     end if;
 
@@ -448,6 +453,17 @@ begin
     end if;
     v.wrword := toSlv(n,IDX_BITS+1);
     --  Push the data to RAM (end)
+
+    --
+    --  check if data was truncated while the gate was open
+    --
+    if r.sink = '1' then
+      for i in r.cache'range loop
+        if r.cache(i).state = OPEN_S then
+          v.cache(i).ovFlow := '1';
+        end if;
+      end loop;  -- i
+    end if;
     
     --
     --  check if a gate has closed; latch time
@@ -488,6 +504,9 @@ begin
 --        v.cache(i).skip   := r.lskip;
 --        v.cache(i).mapd   := END_M; -- look for close
         v.cache(i).baddr  := encodeAddr( v.wraddr, k+imatch );
+        --
+        --  Check if we have mistakenly triggered an occupied buffer
+        --
         if r.cache(i).state /= EMPTY_S then
           v.cache(i).ovflow := '1';
         else

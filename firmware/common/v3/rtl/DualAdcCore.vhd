@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-05-18
+-- Last update: 2021-05-20
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -51,7 +51,8 @@ entity DualAdcCore is
     TPD_G       : time    := 1 ns;
     LCLSII_G    : boolean := TRUE; -- obsolete
     DMA_STREAM_CONFIG_G : AxiStreamConfigType;
-    BASE_ADDR_C : slv(31 downto 0) := (others=>'0') );
+    BASE_ADDR_C : slv(31 downto 0) := (others=>'0');
+    TEM_ADDR_C  : slv(31 downto 0) := x"00010000" );
   port (
     -- AXI-Lite and IRQ Interface
     axiClk              : in  sl;
@@ -60,6 +61,11 @@ entity DualAdcCore is
     axilWriteSlave      : out AxiLiteWriteSlaveType;
     axilReadMaster      : in  AxiLiteReadMasterType;
     axilReadSlave       : out AxiLiteReadSlaveType;
+    -- TriggerEventManager AXI-Lite
+    temAxilWriteMaster     : in  AxiLiteWriteMasterType;
+    temAxilWriteSlave      : out AxiLiteWriteSlaveType;
+    temAxilReadMaster      : in  AxiLiteReadMasterType;
+    temAxilReadSlave       : out AxiLiteReadSlaveType;
     -- DMA
     dmaClk              : in  sl;
     dmaRst              : out slv                 (1 downto 0);
@@ -97,10 +103,10 @@ architecture mapping of DualAdcCore is
   signal phaseValue : Slv16Array(3 downto 0);
   signal phaseCount : Slv16Array(3 downto 0);
   
-  -- one bus per chip ctrl (2), one bus per fex stream (2*3?)
-  constant NUM_AXI_MASTERS_C : integer := 3;
-  constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(2 downto 0) :=
-    genAxiLiteConfig(3, BASE_ADDR_C, 15, 13);
+  -- one bus per chip ctrl (2)
+  constant NUM_AXI_MASTERS_C : integer := 2;
+  constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(1 downto 0) :=
+    genAxiLiteConfig(2, BASE_ADDR_C, 15, 13);
   signal mAxilWriteMasters : AxiLiteWriteMasterArray(NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilWriteSlaves  : AxiLiteWriteSlaveArray (NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilReadMasters  : AxiLiteReadMasterArray (NUM_AXI_MASTERS_C-1 downto 0);
@@ -138,7 +144,7 @@ begin
     generic map (
       NUM_DETECTORS_G                => NFMC_C,
       TRIGGER_CLK_IS_TIMING_RX_CLK_G => true,
-      AXIL_BASE_ADDR_G               => AXI_CROSSBAR_MASTERS_CONFIG_C(2).baseAddr )
+      AXIL_BASE_ADDR_G               => TEM_ADDR_C )
     port map (
       timingRxClk => evrClk,
       timingRxRst => evrRst,
@@ -166,10 +172,10 @@ begin
       -- AXI-Lite
       axilClk         => axiClk,
       axilRst         => axiRst,
-      axilReadMaster  => mAxilReadMasters (2),
-      axilReadSlave   => mAxilReadSlaves  (2),
-      axilWriteMaster => mAxilWriteMasters(2),
-      axilWriteSlave  => mAxilWriteSlaves (2) );
+      axilReadMaster  => temAxilReadMaster ,
+      axilReadSlave   => temAxilReadSlave  ,
+      axilWriteMaster => temAxilWriteMaster,
+      axilWriteSlave  => temAxilWriteSlave  );
 
   GEN_FMC : for i in 0 to NFMC_C-1 generate
 

@@ -186,8 +186,9 @@ architecture rtl of hsd_6400m is
   constant EXT_INDEX_C       : integer := 4;
   constant QSFP_INDEX_C      : integer := 5;
   constant SURF_JESD_INDEX_C : integer := 7;
+  constant TEM_INDEX_C       : integer := 9;
   
-  constant NUM_AXI_MASTERS_C : integer := 9;
+  constant NUM_AXI_MASTERS_C : integer := 10;
   constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(NUM_AXI_MASTERS_C-1 downto 0) := (
     MMCM_INDEX_C      => (
       baseAddr        => x"00088800",
@@ -224,7 +225,11 @@ architecture rtl of hsd_6400m is
     SURF_JESD_INDEX_C+1 => (
       baseAddr        => x"0009B800",
       addrBits        => 11,
-      connectivity    => x"FFFF") );
+      connectivity    => x"FFFF"),
+    TEM_INDEX_C       => (
+      baseAddr        => x"000A0000",
+      addrBits        => 16,
+      connectivity    => x"FFFF");
 
   signal mAxilWriteMasters : AxiLiteWriteMasterArray(NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilWriteSlaves  : AxiLiteWriteSlaveArray (NUM_AXI_MASTERS_C-1 downto 0);
@@ -788,6 +793,7 @@ begin  -- rtl
 
   U_QuadCore : entity work.DualAdcCore
     generic map ( BASE_ADDR_C => AXI_CROSSBAR_MASTERS_CONFIG_C(CHIP_INDEX_C).baseAddr,
+                  TEM_ADDR_C  => AXI_CROSSBAR_MASTERS_CONFIG_C(TEM_INDEX_C).baseAddr,
                   DMA_STREAM_CONFIG_G => READOUT_AXIS_CONFIG_C )
     port map (
       axiClk              => regClk,
@@ -796,6 +802,11 @@ begin  -- rtl
       axilWriteSlave      => mAxilWriteSlaves (CHIP_INDEX_C),
       axilReadMaster      => mAxilReadMasters (CHIP_INDEX_C),
       axilReadSlave       => mAxilReadSlaves  (CHIP_INDEX_C),
+      --
+      temAxilWriteMaster  => mAxilWriteMasters(TEM_INDEX_C),
+      temAxilWriteSlave   => mAxilWriteSlaves (TEM_INDEX_C),
+      temAxilReadMaster   => mAxilReadMasters (TEM_INDEX_C),
+      temAxilReadSlave    => mAxilReadSlaves  (TEM_INDEX_C),
       -- DMA
       dmaClk              => dmaClk,
       dmaRst              => dmaRst,
