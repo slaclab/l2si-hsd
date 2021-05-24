@@ -229,7 +229,7 @@ architecture rtl of hsd_6400m is
     TEM_INDEX_C       => (
       baseAddr        => x"000A0000",
       addrBits        => 16,
-      connectivity    => x"FFFF");
+      connectivity    => x"FFFF") );
 
   signal mAxilWriteMasters : AxiLiteWriteMasterArray(NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilWriteSlaves  : AxiLiteWriteSlaveArray (NUM_AXI_MASTERS_C-1 downto 0);
