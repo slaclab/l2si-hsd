@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-09-17
+-- Last update: 2021-06-01
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -169,11 +169,13 @@ begin  -- mapping
       ssiSetUserSof(SAXIS_CONFIG_G, v.master, '0');
     end if;
 
-    if r.state = S_READCHAN and r.master.tValid='0' then
-      v.tmo := r.tmo-1;
-    else
-      v.tmo := TMO_VAL_C;
-    end if;
+    --  This isn't a good idea
+    --
+    -- if r.state = S_READCHAN and r.master.tValid='0' then
+    --   v.tmo := r.tmo-1;
+    -- else
+    --   v.tmo := TMO_VAL_C;
+    -- end if;
     
     case r.state is
       when S_WAIT =>
@@ -223,7 +225,7 @@ begin  -- mapping
         end if;
       when S_DUMP =>
         v.slave.tReady := '1';
-        if v.master.tLast='1' then
+        if chnMaster.tLast='1' then
           v.state := S_WAIT;
         end if;
       when others => NULL;
