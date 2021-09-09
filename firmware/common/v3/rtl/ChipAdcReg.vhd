@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-08-11
+-- Last update: 2021-07-06
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -56,6 +56,7 @@ entity ChipAdcReg is
     -- Status
     irqReq              : in  sl;
     rstCount            : out sl;
+    dmaRstIn            : in  sl;
     dmaClk              : in  sl := '0';
     status              : in  QuadAdcStatusType );
 end ChipAdcReg;
@@ -98,6 +99,8 @@ architecture mapping of ChipAdcReg is
   signal cacheSel : slv(3 downto 0);
   signal icache   : integer range 0 to 15;
 
+  signal dmaRstInS : sl;
+  
   signal cacheS       : CacheType;
   signal cacheV, cacheSV : slv(CACHETYPE_LEN_C-1 downto 0);
 
@@ -125,6 +128,11 @@ begin  -- mapping
                dataIn  => statusV,
                dataOut => statusVS );
   
+  U_DmaRstInS : entity surf.Synchronizer
+    port map ( clk     => axiClk,
+               dataIn  => dmaRstIn,
+               dataOut => dmaRstInS );
+  
   process (axiClk)
   begin  -- process
     if rising_edge(axiClk) then
@@ -132,7 +140,7 @@ begin  -- mapping
     end if;
   end process;
 
-  process (r,axilReadMaster,axilWriteMaster,axiRst,status,irqReq,cacheS,statusS) is
+  process (r,axilReadMaster,axilWriteMaster,axiRst,status,irqReq,dmaRstInS,cacheS,statusS) is
     variable v : RegType;
     variable sReg : slv(0 downto 0);
     variable cacheS_state : slv(3 downto 0);
@@ -144,7 +152,6 @@ begin  -- mapping
     
     sReg(0) := irqReq;
     axiSlaveWaitTxn(axilEp, axilWriteMaster, axilReadMaster, v.axilWriteSlave, v.axilReadSlave);
-    v.axilReadSlave.rdata := (others=>'0');
     
     -- axiSlaveRegister (axilEp, toSlv( 0,AW), 0, v.irqEnable);
     -- axiSlaveRegisterR(axilEp, toSlv( 4,AW), 0, sReg);
@@ -157,6 +164,9 @@ begin  -- mapping
     axiSlaveRegister (axilEp, toSlv(16,AW),  6, v.fbPLLRst);
     -- axiSlaveRegister (axilEp, toSlv(16,AW),  8, v.config.trigShift);
     axiSlaveRegister (axilEp, toSlv(16,AW), 31, v.config.acqEnable);
+
+    axiSlaveRegisterR(axilEp, toSlv(20,AW), 0, dmaRstInS);
+    
     -- axiSlaveRegister (axilEp, toSlv(20,AW),  0, v.config.rateSel);
     -- axiSlaveRegister (axilEp, toSlv(20,AW), 13, v.config.destSel);
     -- axiSlaveRegister (axilEp, toSlv(24,AW),  0, v.config.enable);

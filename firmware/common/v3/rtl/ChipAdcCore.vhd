@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-08-11
+-- Last update: 2021-07-06
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -214,6 +214,7 @@ begin
                   -- status
                   irqReq              => '0'       ,
                   rstCount            => rstCount  ,
+                  dmaRstIn            => dmaRstS   ,
                   dmaClk              => dmaClk    ,
                   status              => status    );
 

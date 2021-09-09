@@ -242,7 +242,7 @@ architecture mapping of AxiPcieReg is
    signal appResetSync : sl;
    signal appClkFreq   : slv(31 downto 0);
 
-   constant DEBUG_C : boolean := false;
+   constant DEBUG_C : boolean := true;
    
    component ila_0
      port ( clk  : in sl;
@@ -266,7 +266,9 @@ begin
                  probe0(71) => mAxilReadSlave  .rvalid,
                  probe0(103 downto 72) => mAxilWriteMaster.awaddr,
                  probe0(135 downto 104) => mAxilReadMaster .araddr,
-                 probe0(255 downto 136) => (others=>'0') );
+                 probe0(167 downto 136) => axilReadSlave.rdata,
+                 probe0(199 downto 168) => mAxilReadSlave.rdata,
+                 probe0(255 downto 200) => (others=>'0') );
   end generate;
     
    ---------------------------------------------------------------------------------------------

@@ -188,8 +188,6 @@ begin
                      axilWriteMaster, axilReadMaster,
                      v.writeSlave, v.readSlave );
 
-    v.readSlave.rdata := (others=>'0');
-      
     axiSlaveRegister ( ep, x"10", 0, v.xlo   );
     axiSlaveRegister ( ep, x"18", 0, v.xhi   );
     axiSlaveRegister ( ep, x"20", 0, v.tpre  );  -- samples before gate opens/thr

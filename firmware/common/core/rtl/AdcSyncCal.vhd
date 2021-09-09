@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2018-06-08
+-- Last update: 2021-06-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -118,8 +118,6 @@ begin
   begin
     v         := ra;
     v.delayLd := (others=>'0');
-
-    v.axilReadSlave.rdata := (others=>'0');
 
     axiSlaveWaitTxn(ep, axilWriteMaster, axilReadMaster, v.axilWriteSlave, v.axilReadSlave);
 

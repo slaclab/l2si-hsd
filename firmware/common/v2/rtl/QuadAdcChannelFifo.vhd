@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2018-09-26
+-- Last update: 2021-06-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -400,8 +400,6 @@ begin  -- mapping
                      maxilWriteMasters(0), maxilReadMasters(0),
                      v.axilWriteSlave, v.axilReadSlave );
 
-    v.axilReadSlave.rdata := (others=>'0');
-      
     axiSlaveRegister ( ep, x"00", 0, v.fexEnable );
 
     for i in 0 to NSTREAMS_C-1 loop

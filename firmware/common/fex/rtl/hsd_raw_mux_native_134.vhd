@@ -16,10 +16,10 @@ use surf.StdRtlPkg.all;
 use surf.AxiLitePkg.all;
 use work.FmcPkg.all;
 
-entity hsd_raw_mux_native is
-generic (
-    ID_G                     : INTEGER := 0;
-    ILV_G                    : INTEGER := 4;
+entity hsd_raw_mux_native_134 is
+  generic (
+    ID_G                     : integer := 0;
+    ILV_G                    : INTEGER := 4; -- samples per super
     DEBUG_G                  : boolean := false );
 port (
     ap_clk   : IN STD_LOGIC;
@@ -37,25 +37,23 @@ port (
 end;
 
 
-architecture behav of hsd_raw_mux_native is
-
-  constant ILVB   : integer := bitSize(ILV_G-1);
+architecture behav of hsd_raw_mux_native_134 is
 
   type RegType is record
-    chan       : slv(ILVB-1 downto 0);
+    chan       : slv(0 downto 0);
     count      : slv(12 downto 0);
     count_last : slv(12 downto 0);
     nopen      : slv(4 downto 0);
     lskip      : sl;
-    y          : Slv16Array(ROW_SIZE-1 downto 0);
-    t          : Slv2Array (ROW_SIZE   downto 0);
-    yv         : slv       (ROW_IDXB-1 downto 0);
+    y          : Slv16Array(2*ROW_SIZE-1 downto 0);
+    t          : Slv2Array (  ROW_SIZE   downto 0);
+    yv         : slv       (  ROW_IDXB-1 downto 0);
     readSlave  : AxiLiteReadSlaveType;
     writeSlave : AxiLiteWriteSlaveType;
   end record;
   
   constant REG_INIT_C : RegType := (
-    chan       => toSlv(ID_G,ILVB),
+    chan       => toSlv(ID_G,1),
     count      => (others=>'0'),
     count_last => (others=>'0'),
     nopen      => (others=>'0'),
@@ -103,10 +101,11 @@ begin
     -- default response
     v.t := (others=>"00");
     for i in 0 to ROW_SIZE-1 loop
-      v.t(i/ILV_G) := v.t(i/ILV_G) or tin(i);
-      v.y(i) := resize(x(i*ILV_G+conv_integer(r.chan)),16);
+      v.t(i/2) := v.t(i/2) or tin(i);
+      v.y(2*i+0) := resize(x(i*ILV_G+conv_integer(r.chan)+0),16);
+      v.y(2*i+1) := resize(x(i*ILV_G+conv_integer(r.chan)+2),16);
     end loop;
-    
+
     tsum   := "00";
     for i in 0 to ROW_SIZE-1 loop
       tsum := tsum or tin(i);
@@ -119,8 +118,8 @@ begin
       -- ignore skips
 
       if tsum(0) = '1' then
-        v.yv         := toSlv(ROW_SIZE/ILV_G,ROW_IDXB);
-        v.count_last := r.count+ROW_SIZE-1;
+        v.yv         := toSlv(ROW_SIZE/2,ROW_IDXB);
+        v.count_last := r.count+ROW_SIZE/2-1;
         v.lskip      := '0';
       elsif dcount(dcount'left) = '1' then
         v.yv         := toSlv(0,ROW_IDXB);
@@ -129,8 +128,8 @@ begin
         v.yv         := toSlv(0,ROW_IDXB);
       end if;
     elsif r.nopen /= 0 then
-      v.yv         := toSlv(ROW_SIZE/ILV_G,ROW_IDXB);
-      v.count_last := r.count+ROW_SIZE-1;
+      v.yv         := toSlv(ROW_SIZE/2,ROW_IDXB);
+      v.count_last := r.count+ROW_SIZE/2-1;
     else
       v.yv    := toSlv(0,ROW_IDXB);
       v.lskip := '1';
@@ -142,7 +141,7 @@ begin
       v.nopen := r.nopen-1;
     end if;
 
-    v.count := r.count + ROW_SIZE;
+    v.count := r.count + ROW_SIZE/2;
 
     y(r.y'range) <= r.y;
     yv   <= r.yv;

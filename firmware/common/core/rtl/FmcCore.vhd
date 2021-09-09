@@ -237,7 +237,6 @@ begin
     v.cmd_reg := (others=>'0');
     
     axiSlaveWaitTxn(mAxilWriteMasters(0), mAxilReadMasters(0), v.axilWriteSlave, v.axilReadSlave, axilStatus);
-    v.axilReadSlave.rdata := (others=>'0');
 
     axilSlaveRegisterR(toSlv( 0,8), 0, r.irq);
     axilSlaveRegisterW(toSlv( 4,8), 0, v.irq_en);

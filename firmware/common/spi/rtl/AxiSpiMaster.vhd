@@ -6,7 +6,7 @@
 --            : Uros Legat Modified <ulegat@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-01-12
--- Last update: 2016-09-23
+-- Last update: 2021-06-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -147,7 +147,6 @@ begin
                   axiSlaveWriteResponse(v.axiWriteSlave);
                else
                   -- Finish read
-                  v.axiReadSlave.rdata                         := (others => '0');
                   v.axiReadSlave.rdata(DATA_SIZE_G-1 downto 0) := rdData(DATA_SIZE_G-1 downto 0);
                   axiSlaveReadResponse(v.axiReadSlave);
                end if;

@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-05-20
+-- Last update: 2021-07-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ use work.QuadAdcPkg.all;
 entity DualAdcCore is
   generic (
     TPD_G       : time    := 1 ns;
-    LCLSII_G    : boolean := TRUE; -- obsolete
+    LCLSII_G    : boolean := TRUE;
     DMA_STREAM_CONFIG_G : AxiStreamConfigType;
     BASE_ADDR_C : slv(31 downto 0) := (others=>'0');
     TEM_ADDR_C  : slv(31 downto 0) := x"00010000" );
@@ -142,6 +142,8 @@ begin
 
   U_TriggerEventManager : entity l2si_core.TriggerEventManager
     generic map (
+      EN_LCLS_I_TIMING_G             => true,
+      EN_LCLS_II_TIMING_G            => true,
       NUM_DETECTORS_G                => NFMC_C,
       TRIGGER_CLK_IS_TIMING_RX_CLK_G => true,
       AXIL_BASE_ADDR_G               => TEM_ADDR_C )
@@ -184,7 +186,7 @@ begin
     U_ChipAdcCore : entity work.ChipAdcCore
       generic map ( DMA_STREAM_CONFIG_G => DMA_STREAM_CONFIG_G,
                     BASE_ADDR_C         => AXI_CROSSBAR_MASTERS_CONFIG_C(i).baseAddr,
-                    DEBUG_G             => (i=0) )
+                    DEBUG_G             => false )
       port map ( axiClk              => axiClk,
                  axiRst              => axiRst,
                  axilWriteMaster     => mAxilWriteMasters(i),

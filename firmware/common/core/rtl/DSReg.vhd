@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-08-12
+-- Last update: 2021-06-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -186,7 +186,6 @@ begin  -- mapping
     
     sReg(0) := irqReq;
     axiSlaveWaitTxn(axilWriteMaster, axilReadMaster, v.axilWriteSlave, v.axilReadSlave, axilStatus);
-    v.axilReadSlave.rdata := (others=>'0');
     
     axilSlaveRegisterW(toSlv( 0,12), 0, v.irqEnable);
     axilSlaveRegisterR(toSlv( 4,12), sReg);

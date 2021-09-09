@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-05-04
+-- Last update: 2021-07-07
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -505,11 +505,11 @@ begin  -- mapping
                      maxilWriteMasters(0), maxilReadMasters(0),
                      v.axilWriteSlave, v.axilReadSlave );
 
-    v.axilReadSlave.rdata := (others=>'0');
-      
     axiSlaveRegister ( ep, x"00", 0, v.fexEnable );
     axiSlaveRegister ( ep, x"00", 8, v.aaFullN );
+
     axiSlaveRegisterR( ep, x"04", 0, muxSlVectorArray(cntOflow,NSTREAMS_C) );
+    axiSlaveRegisterR( ep, x"04",28, toSlv(NSTREAMS_C,4) );
 
     axiSlaveRegisterR( ep, x"08", 0, r.fexb );
     axiSlaveRegisterR( ep, x"08", 5, toSlv(r.fexn,3) );

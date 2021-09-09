@@ -200,17 +200,17 @@ architecture mapping of AbacoPC820Core is
    
 begin
 
-  GEN_DEBUG : if DEBUG_C generate
-    U_ILA : ila_0
-      port map ( clk                    => dmaClk,
-                 probe0(0)              => dmaIbMasters(0).tValid,
-                 probe0(1)              => dmaIbMasters(0).tLast,
-                 probe0(33 downto 2)    => dmaIbMasters(0).tData(31 downto 0),
-                 probe0(34)             => dmaIbMasters(1).tValid,
-                 probe0(35)             => dmaIbMasters(1).tLast,
-                 probe0(67 downto 36)   => dmaIbMasters(1).tData(31 downto 0),
-                 probe0(255 downto 68)  => (others=>'0') );
-  end generate;
+  -- GEN_DEBUG : if DEBUG_C generate
+  --   U_ILA : ila_0
+  --     port map ( clk                    => dmaClk,
+  --                probe0(0)              => dmaIbMasters(0).tValid,
+  --                probe0(1)              => dmaIbMasters(0).tLast,
+  --                probe0(33 downto 2)    => dmaIbMasters(0).tData(31 downto 0),
+  --                probe0(34)             => dmaIbMasters(1).tValid,
+  --                probe0(35)             => dmaIbMasters(1).tLast,
+  --                probe0(67 downto 36)   => dmaIbMasters(1).tData(31 downto 0),
+  --                probe0(255 downto 68)  => (others=>'0') );
+  -- end generate;
 
    sysClk <= sysClock;
    

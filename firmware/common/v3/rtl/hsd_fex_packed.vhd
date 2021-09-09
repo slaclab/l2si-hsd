@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-05-21
+-- Last update: 2021-07-09
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -678,6 +678,12 @@ begin
     end generate;
   end generate;
 
+  assert (ALGORITHM_G = "NAT" or
+          ALGORITHM_G = "NAF" or
+          ALGORITHM_G = "NTR" or    
+          (ALGORITHM_G = "NCH" and ROW_SIZE=8) or
+          (ALGORITHM_G = "NCH" and ROW_SIZE=10)) report "Unknown fex module" severity failure;
+
   GEN_NAT : if ALGORITHM_G = "NAT" generate
     U_FEX : entity work.hsd_thr_ilv_native
       generic map ( ILV_G => ILV_G,
@@ -731,21 +737,41 @@ begin
                  axilWriteSlave  => axilWriteSlave );
   end generate;
 
-  GEN_CHN : if ALGORITHM_G = "CHN" generate
-    U_FEX : entity work.hsd_raw_mux_native
-      generic map ( ILV_G   => ILV_G )
-      port map ( ap_clk          => clk,
-                 ap_rst_n        => rstn,
-                 sync            => configSync,
-                 x               => din,
-                 tin             => r.tin,
-                 y               => idout,
-                 tout            => tout,
-                 yv              => douten,
-                 axilReadMaster  => axilReadMaster,
-                 axilReadSlave   => axilReadSlave,
-                 axilWriteMaster => axilWriteMaster,
-                 axilWriteSlave  => axilWriteSlave );
+  GEN_NCH : if ALGORITHM_G = "NCH" generate
+    GEN_126 : if ROW_SIZE = 8 generate
+      U_FEX : entity work.hsd_raw_mux_native
+        generic map ( ID_G    => ALG_ID_G,
+                      ILV_G   => ILV_G )
+        port map ( ap_clk          => clk,
+                   ap_rst_n        => rstn,
+                   sync            => configSync,
+                   x               => din,
+                   tin             => r.tin,
+                   y               => idout,
+                   tout            => tout,
+                   yv              => douten,
+                   axilReadMaster  => axilReadMaster,
+                   axilReadSlave   => axilReadSlave,
+                   axilWriteMaster => axilWriteMaster,
+                   axilWriteSlave  => axilWriteSlave );
+    end generate;
+    GEN_134 : if ROW_SIZE = 10 generate
+      U_FEX : entity work.hsd_raw_mux_native_134
+        generic map ( ID_G    => ALG_ID_G,
+                      ILV_G   => ILV_G )
+        port map ( ap_clk          => clk,
+                   ap_rst_n        => rstn,
+                   sync            => configSync,
+                   x               => din,
+                   tin             => r.tin,
+                   y               => idout,
+                   tout            => tout,
+                   yv              => douten,
+                   axilReadMaster  => axilReadMaster,
+                   axilReadSlave   => axilReadSlave,
+                   axilWriteMaster => axilWriteMaster,
+                   axilWriteSlave  => axilWriteSlave );
+    end generate;
   end generate;
 
 end mapping;

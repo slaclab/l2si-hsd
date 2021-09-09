@@ -157,7 +157,7 @@ create_clock -period 10.000 -name pciRefClkP [get_ports pciRefClkP]
 #create_generated_clock -name serdesClk [get_pins {U_APP/U_FMC/ev10aq190_quad_phy_inst/serdes_mmcm_inst/clk_in1}]
 
 create_generated_clock -name dnaClk [get_pins U_Core/U_REG/U_Version/GEN_DEVICE_DNA.DeviceDna_1/GEN_ULTRA_SCALE.DeviceDnaUltraScale_Inst/BUFGCE_DIV_Inst/O]
-create_generated_clock -name pciClk [get_pins U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_userclk/O]
+create_generated_clock -name pciClk [get_pins U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_userclk/O]
 create_generated_clock -name flashClk [get_pins U_Core/U_Clk/MmcmGen.U_Mmcm/CLKOUT0]
 #create_generated_clock -name evrClk [get_pins {U_Core/GEN_NOSIM.U_TimingGth/GEN_EXTREF.TIMING_RECCLK_BUFG_GT/O}]
 #create_generated_clock -name timingFbClk [get_pins {U_Core/GEN_NOSIM.U_TimingGth/GEN_EXTREF.TIMING_TXCLK_BUFG_GT/O}]
@@ -170,14 +170,14 @@ set_clock_groups -asynchronous -group [get_clocks dnaClk] -group [get_clocks pci
 set_clock_groups -asynchronous -group [get_clocks flashClk] -group [get_clocks pciClk]
 set_clock_groups -asynchronous -group [get_clocks evrClk] -group [get_clocks timingFbClk]
 
-set_property LOC PCIE_3_1_X0Y0 [get_cells U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst]
+set_property LOC PCIE_3_1_X0Y0 [get_cells U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst]
 set_property PACKAGE_PIN AP28 [get_ports pciRstL]
 set_property IOSTANDARD LVCMOS18 [get_ports pciRstL]
 set_property PULLUP true [get_ports pciRstL]
 set_false_path -from [get_ports pciRstL]
 
 create_pblock PCIE_PHY_GRP
-add_cells_to_pblock [get_pblocks PCIE_PHY_GRP] [get_cells -quiet [list U_Core/U_AxiPciePhy/U_AxiPcie]]
+add_cells_to_pblock [get_pblocks PCIE_PHY_GRP] [get_cells -quiet [list U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie]]
 resize_pblock [get_pblocks PCIE_PHY_GRP] -add {CLOCKREGION_X3Y0:CLOCKREGION_X3Y1}
 
 #  Dissolve the timing constraint between adr_p and the MMCM outputs
