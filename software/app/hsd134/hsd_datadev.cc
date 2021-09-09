@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
             }
             if (lprint || lErr) {
                 printf("---\n");
-                printf("Read %zu bytes:  Dest 0x%x\n",nb, dest);
+                printf("Read %zu bytes:  Dest 0x%x  %s\n",nb, dest, (dest>>8)?"A2/3":"A0/1");
                 eh->dump();
                 for(const StreamHeader* sh = it.first(); sh; sh=it.next()) {
                     sh->dump();
