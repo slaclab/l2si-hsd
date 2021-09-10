@@ -435,6 +435,8 @@ void Module134::sample_init (unsigned length,
             if (streams & (1<<(4*_fmc+i))) {
                 fex._base[i].setGate(delay,nrows);
                 fex._base[i].setFull(1024,6);
+                if (i==2)  // raw interleaved
+                    fex._base[i].setPrescale(prescale-1);
                 fex._base[i].dump();
                 if (i<2)
                     fex._stream[i].parms[0].v = i;
