@@ -1198,10 +1198,11 @@ int32_t Fmc134Cpld::reset_clock_chip(int32_t)
 
 int32_t Fmc134Cpld::default_adc_init(AdcCalibMode cmode,
                                      std::string& calib_adc0,
-                                     std::string& calib_adc1)
+                                     std::string& calib_adc1,
+                                     bool         lDualChannel,
+                                     InputChan    inputCh)
 {
     logging::info("*** default_adc_init ***\n");
-    uint32_t sampleMode=1;
     uint32_t adc_txemphasis=0;
   
     uint32_t dword0;
@@ -1308,15 +1309,14 @@ int32_t Fmc134Cpld::default_adc_init(AdcCalibMode cmode,
     if(rc!=UNITAPI_OK) return rc;
 
     // Set JMODE = 2 (or 0 for single channel mode)
-    if (sampleMode == 0) {
+    if (lDualChannel) {
+        spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0060, (inputCh==CHAN_A0_2 ? 0:0x10));
         spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0201, 0x02);
         if(rc!=UNITAPI_OK) return rc;
-    } else if (sampleMode == 1) {
+    } else {
+        spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0060, (inputCh==CHAN_A0_2 ? 1:2));
         spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0201, 0x00);
         if(rc!=UNITAPI_OK) return rc;
-    } else {
-        logging::error("Unsupported Sample Mode!\n");
-        return FMC134_ERR_ADC_INIT;
     }
 
     // Set K = 16
