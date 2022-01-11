@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
     length = 32*(length/32);
     //  One channel readout (interleaved)
     unsigned channel = 0; // input channel
-    p->sample_init(length, 1, 0, channel, 0xff, q);
+    p->sample_init(length, 1, 2, channel, 0xff, q);
 
     //  Setup trigger
     p->trig_lcls( eventcode );

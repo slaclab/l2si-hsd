@@ -427,12 +427,11 @@ void Module134::sample_init (unsigned length,
         //  Need to wait until the reset is complete, else later axi-lite transactions fail.
         usleep(10000);
 
-        unsigned nrows = length/8;
-
 #define DBG_WRITE(r,v) { r=v; }
   
         for(unsigned i=0; i<4; i++) {
             if (streams & (1<<(4*_fmc+i))) {
+                unsigned nrows = (i<2) ? length/20 : length/40;
                 fex._base[i].setGate(delay,nrows);
                 fex._base[i].setFull(1024,6);
                 if (i==2)  // raw interleaved
