@@ -94,6 +94,7 @@ entity AbacoPC820Core is
       timingRecClk   : out sl;
       timingRecClkRst: out sl;
       timingBus      : out TimingBusType;
+      timingClkSel   : out sl;
       timingFb       : in  TimingPhyType := TIMING_PHY_INIT_C;
       timingFbClk    : out sl;
       timingFbRst    : out sl;
@@ -598,7 +599,8 @@ begin
          appTimingClk    => timingClk,
          appTimingRst    => timingClkRst,
          appTimingBus    => intTimingBus,
-         timingClkSel    => open,
+         appTimingMode   => open,
+         timingClkSel    => timingClkSel,
          axilClk         => sysClock,
          axilRst         => sysReset,
          axilReadMaster  => timReadMaster,

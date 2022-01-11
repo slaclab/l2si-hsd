@@ -4,6 +4,7 @@ source -quiet $::env(RUCKUS_DIR)/vivado_proc.tcl
 # Load local Source Code and Constraints
 loadSource -lib axi_pcie_core -path "$::DIR_PATH/rtl/AxiPciePkg.vhd"
 loadSource -lib axi_pcie_core -path "$::DIR_PATH/rtl/AxiPcieRegPkg.vhd"
+loadSource -path "$::DIR_PATH/rtl/AbacoPC820Top.vhd"
 loadSource -path "$::DIR_PATH/rtl/AbacoPC820Core.vhd"
 loadSource -path "$::DIR_PATH/rtl/AbacoPC820PciePhyWrapper.vhd"
 loadSource -path "$::DIR_PATH/rtl/AxiPcieReg.vhd"

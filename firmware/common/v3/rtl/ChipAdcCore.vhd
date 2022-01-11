@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-07-06
+-- Last update: 2022-01-10
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -74,7 +74,8 @@ entity ChipAdcCore is
     dmaRxIbSlave        : in  AxiStreamSlaveType;
     eventAxisMaster     : in  AxiStreamMasterType;
     eventAxisSlave      : out AxiStreamSlaveType;
-    eventAxisCtrl       : out AxiStreamCtrlType;   --
+    eventAxisCtrl       : out AxiStreamCtrlType;
+    clearReadout        : in  sl := '0';
     --
     fbPllRst            : out sl;
     fbPhyRst            : out sl;
@@ -231,7 +232,8 @@ begin
 
   Sync_dmaCtrlCount : entity surf.SynchronizerFifo
     generic map ( DATA_WIDTH_G => 32 )
-    port map    ( wr_clk       => dmaClk,
+    port map    ( rst          => dmaRstS,
+                  wr_clk       => dmaClk,
                   din          => dmaFullCnt,
                   rd_clk       => axiClk,
                   dout         => status.dmaCtrlCount );
@@ -248,9 +250,9 @@ begin
   begin
     if rising_edge(dmaClk) then
       dmaRstI <= dmaRstI(dmaRstI'left-1 downto 0) & dmaRstI(0);
-      if idmaRst='1' then
+      if idmaRst='1' or clearReadout='1' then
         dmaRstI(0) <= '1';
-      elsif dmaStrobe='1' then
+      elsif dmaRstI(dmaRstI'left)='1' and dmaStrobe='1' then
         dmaRstI(0) <= '0';
       end if;
     end if;

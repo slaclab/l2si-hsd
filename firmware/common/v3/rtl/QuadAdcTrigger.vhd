@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2020-09-12
+-- Last update: 2022-01-11
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -145,6 +145,7 @@ begin
   U_L0L1 : entity surf.SynchronizerFifo
     generic map ( DATA_WIDTH_G => triggerDataSlv'length )
     port map ( wr_clk   => triggerClk,
+               wr_en    => triggerData.valid,
                din      => triggerDataSlv,
                rd_clk   => clk,
                valid    => triggerDataValidSync,

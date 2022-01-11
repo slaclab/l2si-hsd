@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-06-01
+-- Last update: 2022-01-10
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ begin  -- mapping
              "010" when r.state = S_READHDR else
              "011" when r.state = S_WRITEHDR else
              "100" when r.state = S_READCHAN else
-             "101";
+             "101";     
 
   hdrtag  <= eventHdr(85 downto 81);
   chntag  <= chnMaster.tData(84 downto 80);

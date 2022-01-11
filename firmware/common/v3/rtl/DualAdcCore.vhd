@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-07-12
+-- Last update: 2022-01-07
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -117,8 +117,14 @@ architecture mapping of DualAdcCore is
   signal eventAxisSlaves     : AxiStreamSlaveArray (NFMC_C-1 downto 0);
   signal eventAxisCtrl       : AxiStreamCtrlArray  (NFMC_C-1 downto 0);
 
+  signal dmaRstOr     : sl;
+  signal idmaRst      : slv(NFMC_C-1 downto 0);
+  signal clearReadout : slv(NFMC_C-1 downto 0);
 begin  
 
+  dmaRst   <= idmaRst;
+  dmaRstOr <= uOr(idmaRst);
+  
   --------------------------
   -- AXI-Lite: Crossbar Core
   --------------------------
@@ -165,12 +171,13 @@ begin
 
       -- Output Streams
       eventClk            => dmaClk,
-      eventRst            => adcRst,
+      eventRst            => dmaRstOr,
       eventTimingMessages => open,
       eventAxisMasters    => eventAxisMasters,
       eventAxisSlaves     => eventAxisSlaves,
       eventAxisCtrl       => eventAxisCtrl,
-
+      clearReadout        => clearReadout,
+      
       -- AXI-Lite
       axilClk         => axiClk,
       axilRst         => axiRst,
@@ -200,12 +207,13 @@ begin
                  triggerData         => triggerData  (i),
                  -- DMA
                  dmaClk              => dmaClk,
-                 dmaRst              => dmaRst       (i),
+                 dmaRst              => idmaRst      (i),
                  dmaRxIbMaster       => dmaRxIbMaster(i),
                  dmaRxIbSlave        => dmaRxIbSlave (i),
                  eventAxisMaster     => eventAxisMasters   (i),
                  eventAxisSlave      => eventAxisSlaves    (i),
                  eventAxisCtrl       => eventAxisCtrl      (i),
+                 clearReadout        => clearReadout       (i),
                  --
                  fbPllRst            => ifbPllRst    (i),
                  fbPhyRst            => ifbPhyRst    (i),
