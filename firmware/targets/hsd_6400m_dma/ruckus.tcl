@@ -12,7 +12,7 @@ loadRuckusTcl "$::DIR_PATH/../../common"
 loadRuckusTcl "$::DIR_PATH/../../common/v3"
 loadRuckusTcl "$::DIR_PATH/../../common/jesd204b"
 
-loadRuckusTcl  "$::DIR_PATH/../../common/PC820"
+loadRuckusTcl "$::DIR_PATH/../../common/PC820"
 loadRuckusTcl "$::DIR_PATH/../../submodules/axi-pcie-core/shared"
 
 # Load target's source code and constraints

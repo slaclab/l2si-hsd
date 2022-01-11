@@ -11,7 +11,7 @@
 -- Description : link all project blocks
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
- 
+
 -------------------------------------------------------------------------------
 -- library description
 -------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 use ieee.std_logic_arith.all;
 use ieee.math_real.all;
- 
+
 library work;
 use work.QuadAdcPkg.all;
 use work.FmcPkg.all;  -- jesd204b component declaration
@@ -37,7 +37,7 @@ use axi_pcie_core.AxiPcieRegPkg.all;
 
 library lcls_timing_core;
 use lcls_timing_core.TimingPkg.all;
- 
+
 library unisim;            
 use unisim.vcomponents.all;  
 
@@ -113,8 +113,8 @@ entity AbacoPC820Top is
     pg_m2c           : in    slv      (1 downto 0);
     prsnt_m2c_l      : in    slv      (1 downto 0) );
 end AbacoPC820Top;
- 
- 
+
+
 -------------------------------------------------------------------------------
 -- architecture
 -------------------------------------------------------------------------------
@@ -302,30 +302,30 @@ architecture rtl of AbacoPC820Top is
 begin  -- rtl
 
   GEN_DEBUG : if DEBUG_C generate
-      U_ILA : ila_0
-        port map ( clk                    => dmaClk,
-                   probe0(             0) => rst_rxclk,
-                   probe0(  2 downto   1) => syncb,
-                   probe0(             3) => sysref_pulse,
-                   probe0(             4) => sysref_sync_en,
-                   probe0( 16 downto   5) => s_samples(0),
-                   probe0( 28 downto  17) => s_samples(1),
-                   probe0( 40 downto  29) => s_samples(2),
-                   probe0( 52 downto  41) => s_samples(3),
-                   probe0( 64 downto  53) => s_samples(4),
-                   probe0( 68 downto  65) => (others=>'0'),
-                   probe0( 76 downto  69) => surfJesdRx(0).dataK,
-                   probe0( 84 downto  77) => surfJesdRx(0).dispErr,
-                   probe0( 92 downto  85) => surfJesdRx(0).decErr,
-                   probe0(108 downto  93) => rx_disparity_sum,
-                   probe0(124 downto 109) => rx_invalid_sum,
-                   probe0(188 downto 125) => surfAdcData(0),
-                   probe0(204 downto 189) => surfAdcValid,
-                   probe0(           205) => surfJesdRx(0).rstDone,
-                   probe0(           206) => surfJesdRx(0).cdrStable,
-                   probe0(           207) => sysref_edge,
-                   probe0(218 downto 208) => surfDebug(0),
-                   probe0(255 downto 219) => (others=>'0') );
+    U_ILA : ila_0
+      port map ( clk                    => dmaClk,
+                 probe0(             0) => rst_rxclk,
+                 probe0(  2 downto   1) => syncb,
+                 probe0(             3) => sysref_pulse,
+                 probe0(             4) => sysref_sync_en,
+                 probe0( 16 downto   5) => s_samples(0),
+                 probe0( 28 downto  17) => s_samples(1),
+                 probe0( 40 downto  29) => s_samples(2),
+                 probe0( 52 downto  41) => s_samples(3),
+                 probe0( 64 downto  53) => s_samples(4),
+                 probe0( 68 downto  65) => (others=>'0'),
+                 probe0( 76 downto  69) => surfJesdRx(0).dataK,
+                 probe0( 84 downto  77) => surfJesdRx(0).dispErr,
+                 probe0( 92 downto  85) => surfJesdRx(0).decErr,
+                 probe0(108 downto  93) => rx_disparity_sum,
+                 probe0(124 downto 109) => rx_invalid_sum,
+                 probe0(188 downto 125) => surfAdcData(0),
+                 probe0(204 downto 189) => surfAdcValid,
+                 probe0(           205) => surfJesdRx(0).rstDone,
+                 probe0(           206) => surfJesdRx(0).cdrStable,
+                 probe0(           207) => sysref_edge,
+                 probe0(218 downto 208) => surfDebug(0),
+                 probe0(255 downto 219) => (others=>'0') );
     
     GEN_LANE : for i in 0 to 15 generate
       rx_disparity_sum(i) <= '0' when rx_disparity_out(i)=0 else '1';
@@ -457,7 +457,7 @@ begin  -- rtl
     U_Mux : entity surf.AxiStreamMux
       generic map (
         NUM_SLAVES_G         => DMA_INSIZE_C
-      )
+        )
       port map (
         -- Clock and reset
         axisClk      => dmaClk,
@@ -477,17 +477,17 @@ begin  -- rtl
   end generate;
   
   U_Core : entity work.AbacoPC820Core
-   generic map (
+    generic map (
       BUILD_INFO_G         => BUILD_INFO_G,
       DMA_AXIS_CONFIG_G    => DMA_AXIS_CONFIG_C,
       AXI_COMMON_CLK_G     => true,
       DMA_SIZE_G           => DMA_OUTSIZE_C,
       DEVICE_MAP_G         => DEVICE_MAP_C,
       TIMING_CORE_G        => TIMING_CORE_G )
-   port map (
+    port map (
       ------------------------
       --  Top Level Interfaces
-     ------------------------
+      ------------------------
       sysClk          => sysClk,
       sysRst          => sysRst,
       -- DMA Interfaces  (dmaClk domain)
@@ -555,7 +555,7 @@ begin  -- rtl
   --  adcClk = 160MHz * 13/14 = 929kHz *160
   --
   --  LMX2581 PLL features
-  GEN_MMCM : if TIMING_CORE_G /= "LCLSII" generate
+  GEN_MMCM_I : if TIMING_CORE_G /= "LCLSII" generate
     U_MMCM : entity surf.ClockManagerUltraScale
       generic map ( INPUT_BUFG_G       => false,
                     NUM_CLOCKS_G       => 1,
@@ -581,7 +581,7 @@ begin  -- rtl
                  locked     => pllLocked(1));
   end generate;
 
-  GEN_MMCM : if TIMING_CORE_G /= "LCLSI" generate
+  GEN_MMCM_II : if TIMING_CORE_G /= "LCLSI" generate
     U_MMCMc : entity surf.ClockManagerUltraScale
       generic map ( INPUT_BUFG_G       => false,
                     NUM_CLOCKS_G       => 1,
@@ -802,7 +802,7 @@ begin  -- rtl
         mAxisSlave  => dmaIbSlave250 (i) );
   end generate;
   
-    U_QuadCore : entity work.DualAdcCore
+  U_QuadCore : entity work.DualAdcCore
     generic map ( BASE_ADDR_C => AXI_CROSSBAR_MASTERS_CONFIG_C(CHIP_INDEX_C).baseAddr,
                   TEM_ADDR_C  => AXI_CROSSBAR_MASTERS_CONFIG_C(TEM_INDEX_C).baseAddr,
                   DMA_STREAM_CONFIG_G => READOUT_AXIS_CONFIG_C )
@@ -930,23 +930,6 @@ begin  -- rtl
     end if;
   end process;
 
-  
-  -------------------------------------------------------------------------------------
--- Connect Port Signals
--------------------------------------------------------------------------------------
-
   adc_syncse_n <= syncb;
-
-  
-  --sync_to_lmk   <= fpga_sync_out;
-  --fmc_aclk      <= rx_clk;
-  --fmc_aresetn   <= not rst_rxclk;
-
-  --OBUFDS_sync : OBUFDS
-  --  port map (
-  --    O  => sync_from_fpga_p,
-  --    OB => sync_from_fpga_n,
-  --    I  => fpga_sync_out
-  --    );
 
 end rtl;

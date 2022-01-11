@@ -20,9 +20,9 @@ set_clock_groups -asynchronous \
                  -group [get_clocks -include_generated_clocks sysref_bufg] \
                  -group [get_clocks -include_generated_clocks lmk_devclk_bufg]
 
-create_generated_clock -name rxoutclk_6 [get_pins {U_Core/GEN_TIMING.U_TimingGth/GEN_EXTREF.U_TimingGthCore/inst/gen_gtwizard_gthe3_top.TimingGth_extref_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_channel_container[0].gen_enabled_channel.gthe3_channel_wrapper_inst/channel_inst/gthe3_channel_gen.gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST/RXOUTCLK}]
+create_generated_clock -name rxoutclk_6 [get_pins {U_Top/U_Core/GEN_TIMING.U_TimingGth/GEN_EXTREF.U_TimingGthCore/inst/gen_gtwizard_gthe3_top.TimingGth_extref_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_channel_container[0].gen_enabled_channel.gthe3_channel_wrapper_inst/channel_inst/gthe3_channel_gen.gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST/RXOUTCLK}]
 
-create_generated_clock -name txoutclk_4 [get_pins {U_Core/GEN_TIMING.U_TimingGth/GEN_EXTREF.U_TimingGthCore/inst/gen_gtwizard_gthe3_top.TimingGth_extref_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_channel_container[0].gen_enabled_channel.gthe3_channel_wrapper_inst/channel_inst/gthe3_channel_gen.gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST/TXOUTCLK}]
+create_generated_clock -name txoutclk_4 [get_pins {U_Top/U_Core/GEN_TIMING.U_TimingGth/GEN_EXTREF.U_TimingGthCore/inst/gen_gtwizard_gthe3_top.TimingGth_extref_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_channel_container[0].gen_enabled_channel.gthe3_channel_wrapper_inst/channel_inst/gthe3_channel_gen.gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST/TXOUTCLK}]
 
 set_clock_groups -asynchronous \
 		 -group [get_clocks rxoutclk_6] \
@@ -31,8 +31,8 @@ set_clock_groups -asynchronous \
 set_false_path -from [get_ports {pg_m2c[0]}]
 set_false_path -from [get_ports {prsnt_m2c_l[0]}]
 
-set_false_path -from [get_pins {U_QuadCore/GEN_FMC[0].U_ChipAdcCore/dmaRstI_reg[2]/C}]
-set_false_path -from [get_pins {U_QuadCore/GEN_FMC[1].U_ChipAdcCore/dmaRstI_reg[2]/C}]
+set_false_path -from [get_pins {U_Top/U_QuadCore/GEN_FMC[0].U_ChipAdcCore/dmaRstI_reg[2]/C}]
+set_false_path -from [get_pins {U_Top/U_QuadCore/GEN_FMC[1].U_ChipAdcCore/dmaRstI_reg[2]/C}]
 
 ######################################
 # BITSTREAM: .bit file Configuration #
@@ -117,10 +117,10 @@ set_property PACKAGE_PIN AR10 [get_ports pciRefClkP]
 create_clock -period 10.000 -name pciRefClkP [get_ports pciRefClkP]
 
 create_generated_clock -name dmaClk [get_pins xcvr_wrapper_inst0/RefClk_BUFG_Div2/O]
-create_generated_clock -name pciClk [get_pins U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_userclk/O]
-create_generated_clock -name pipeClk [get_pins U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_pclk/O]
+create_generated_clock -name pciClk [get_pins U_Top/U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_userclk/O]
+create_generated_clock -name pipeClk [get_pins U_Top/U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_pclk/O]
 
-set_clock_groups -asynchronous -group [get_clocks -of_objects [get_pins {U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/gt_wizard.gtwizard_top_i/AbacoPC820PciePhy_pcie3_ip_gt_i/inst/gen_gtwizard_gthe3_top.AbacoPC820PciePhy_pcie3_ip_gt_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_channel_container[25].gen_enabled_channel.gthe3_channel_wrapper_inst/channel_inst/gthe3_channel_gen.gen_gthe3_channel_inst[3].GTHE3_CHANNEL_PRIM_INST/TXOUTCLK}]] -group [get_clocks pciRefClkP]
+set_clock_groups -asynchronous -group [get_clocks -of_objects [get_pins {U_Top/U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/gt_wizard.gtwizard_top_i/AbacoPC820PciePhy_pcie3_ip_gt_i/inst/gen_gtwizard_gthe3_top.AbacoPC820PciePhy_pcie3_ip_gt_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_channel_container[25].gen_enabled_channel.gthe3_channel_wrapper_inst/channel_inst/gthe3_channel_gen.gen_gthe3_channel_inst[3].GTHE3_CHANNEL_PRIM_INST/TXOUTCLK}]] -group [get_clocks pciRefClkP]
 
 #  Correct the clock rates (320MHz)
 create_clock -period 3.125 -name adc_refclka_0 [get_ports {adc_refclka_p[0]}]
@@ -142,20 +142,20 @@ set_clock_groups -asynchronous \
                  -group [get_clocks pciClk] \
                  -group [get_clocks pipeClk]
 
-create_generated_clock -name dnaClk [get_pins U_Core/U_REG/U_Version/GEN_DEVICE_DNA.DeviceDna_1/GEN_ULTRA_SCALE.DeviceDnaUltraScale_Inst/BUFGCE_DIV_Inst/O]
-create_generated_clock -name flashClk [get_pins U_Core/U_Clk/MmcmGen.U_Mmcm/CLKOUT0]
+create_generated_clock -name dnaClk [get_pins U_Top/U_Core/U_REG/U_Version/GEN_DEVICE_DNA.DeviceDna_1/GEN_ULTRA_SCALE.DeviceDnaUltraScale_Inst/BUFGCE_DIV_Inst/O]
+create_generated_clock -name flashClk [get_pins U_Top/U_Core/U_Clk/MmcmGen.U_Mmcm/CLKOUT0]
 
 set_clock_groups -asynchronous -group [get_clocks dnaClk] -group [get_clocks pciClk]
 set_clock_groups -asynchronous -group [get_clocks flashClk] -group [get_clocks pciClk]
 
-set_property LOC PCIE_3_1_X0Y0 [get_cells U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst]
+set_property LOC PCIE_3_1_X0Y0 [get_cells U_Top/U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst]
 set_property PACKAGE_PIN AP28 [get_ports pciRstL]
 set_property IOSTANDARD LVCMOS18 [get_ports pciRstL]
 set_property PULLUP true [get_ports pciRstL]
 set_false_path -from [get_ports pciRstL]
 
 create_pblock PCIE_PHY_GRP
-add_cells_to_pblock [get_pblocks PCIE_PHY_GRP] [get_cells -quiet [list U_Core/U_AxiPciePhy/U_AxiPcie]]
+add_cells_to_pblock [get_pblocks PCIE_PHY_GRP] [get_cells -quiet [list U_Top/U_Core/U_AxiPciePhy/U_AxiPcie]]
 resize_pblock [get_pblocks PCIE_PHY_GRP] -add {CLOCKREGION_X3Y0:CLOCKREGION_X3Y1}
 
 

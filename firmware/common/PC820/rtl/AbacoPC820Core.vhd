@@ -50,7 +50,7 @@ entity AbacoPC820Core is
       AXI_COMMON_CLK_G     : boolean                      := false;
       DMA_BURST_BYTES_G    : positive range 256 to 4096  := 256;
       DMA_SIZE_G           : positive range 1 to 8       := 1;
-      TIMING_CORE_G        : string := "NONE" ); -- LCLSI, LCLSII, or NONE 
+      TIMING_CORE_G        : string := "NONE" ); -- LCLSI, LCLSII, SELECT, or NONE
    port (
       ------------------------
       --  Top Level Interfaces
