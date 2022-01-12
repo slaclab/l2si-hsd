@@ -1,0 +1,36 @@
+
+GitBase: ..
+
+TopRoguePackage: l2si-hsd
+
+RoguePackages:
+  - submodules/axi-pcie-core/python
+  - submodules/l2si-core/python
+  - submodules/lcls-timing-core/python
+  - submodules/surf/python
+  - python     
+
+RogueConfig:
+  - ../software/config
+
+RogueScripts:
+  - ../software/scripts/devGui
+
+Targets:
+  hsd_6400m:
+    ImageDir: targets/hsd_6400m/images
+    Extensions:
+      - mcs
+  hsd_6400m_dma_nc:
+    ImageDir: targets/hsd_6400m_dma_nc/images
+    Extensions:
+      - mcs
+
+Releases:
+  all:
+    Primary: True
+    Targets:
+      - hsd_6400m
+      - hsd_6400m_dma_nc
+    Types:
+      - firmware
