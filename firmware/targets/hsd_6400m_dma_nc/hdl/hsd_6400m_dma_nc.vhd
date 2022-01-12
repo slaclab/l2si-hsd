@@ -26,7 +26,7 @@ library work;
 library xil_defaultlib;
 use xil_defaultlib.types_pkg.all;
 
-entity hsd_6400m_dma is
+entity hsd_6400m_dma_nc is
   generic (
     BUILD_INFO_G  : BuildInfoType );
   port (
@@ -93,13 +93,13 @@ entity hsd_6400m_dma is
     --
     pg_m2c           : in    slv      (1 downto 0);
     prsnt_m2c_l      : in    slv      (1 downto 0) );
-end hsd_6400m_dma;
+end hsd_6400m_dma_nc;
  
  
 -------------------------------------------------------------------------------
 -- architecture
 -------------------------------------------------------------------------------
-architecture top_level of hsd_6400m_dma is
+architecture top_level of hsd_6400m_dma_nc is
 begin
   U_Top : entity work.AbacoPC820Top
     generic map (

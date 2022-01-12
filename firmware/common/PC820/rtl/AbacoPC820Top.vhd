@@ -147,7 +147,8 @@ architecture rtl of AbacoPC820Top is
   signal timingFbClk    : sl;
   signal timingFbRst    : sl;
   signal timingFb       : TimingPhyType;
-
+  signal timingClkSel   : sl;
+  
   signal dmaIbMaster    : AxiStreamMasterArray(DMA_INSIZE_C-1 downto 0);
   signal dmaIbSlave     : AxiStreamSlaveArray (DMA_INSIZE_C-1 downto 0);
   signal dmaIbMasterMux : AxiStreamMasterArray(DMA_OUTSIZE_C-1 downto 0);
