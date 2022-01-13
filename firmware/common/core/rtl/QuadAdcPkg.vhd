@@ -24,6 +24,7 @@ use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 
 library work;
+use work.FexAlgPkg.all;
 
 library surf;
 use surf.StdRtlPkg.all;
@@ -112,7 +113,7 @@ package QuadAdcPkg is
   --  Event Buffer Handling
   --
 --  constant RAM_DEPTH_C : integer := 8192; -- fails by 0.26 ns
-  constant RAM_DEPTH_C : integer := 4096;
+--  constant RAM_DEPTH_C : integer := 4096;
 --  constant RAM_DEPTH_C : integer := 2048;
   constant MAX_OVL_C : integer := 16;
   constant MAX_OVL_BITS_C : integer := bitSize(MAX_OVL_C-1);
