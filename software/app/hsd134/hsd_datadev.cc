@@ -32,10 +32,13 @@ void usage(const char* p) {
     printf("Usage: %s [options]\n",p);
     printf("Options:\n");
     printf("\t-d <dev>    : device file (default /dev/datadev_0)\n");
+    printf("\t-e <evtcode>: eventcode for triggering (default 45)\n");
     printf("\t-n <events> : acquire <nevents> events\n");
     printf("\t-L <samples>: samples to acquire\n");
     printf("\t-T <lo,hi>  : sparsification range\n");
     printf("\t-P          : enable ramp test pattern\n");
+    printf("\t-R          : enable raw data\n");
+    printf("\t-D          : decompress fex data\n");
 }
 
 const std::vector<uint16_t> _decompress(const uint16_t* data, unsigned length, uint16_t filler)
@@ -65,6 +68,7 @@ int main(int argc, char** argv) {
     unsigned length  = 40;  
     unsigned nevents = 10;
     unsigned eventcode = 45;
+    unsigned streams   = 0x88;
     //  sparsify values between lo_threshold and hi_threshold
     FexParams q;
     q.lo_threshold=0;
@@ -73,7 +77,7 @@ int main(int argc, char** argv) {
     q.rows_after  =2;
     char* endptr;
   
-    while ( (c=getopt( argc, argv, "d:e:n:hDL:PT:")) != EOF ) {
+    while ( (c=getopt( argc, argv, "d:e:n:hDL:PRT:")) != EOF ) {
         switch(c) {
         case 'd':
             dev = optarg;
@@ -93,6 +97,8 @@ int main(int argc, char** argv) {
         case 'P':
             lPattern = true;
             break;
+        case 'R':
+            streams |= 0x44;
         case 'T':
             q.lo_threshold = strtoul(optarg  ,&endptr,0);
             q.hi_threshold = strtoul(endptr+1,&endptr,0);
@@ -151,8 +157,8 @@ int main(int argc, char** argv) {
     //     3 : 6400m sparsified
     length = 32*(length/32);
     //  One channel readout (interleaved)
-    unsigned channel = 0; // input channel
-    p->sample_init(length, 1, 2, channel, 0xff, q);
+    // (length,delay,prescale,input(unused),stream_mask,sparsify)
+    p->sample_init(length, 1, 2, 0, streams, q);
 
     //  Setup trigger
     p->trig_lcls( eventcode );
@@ -166,6 +172,9 @@ int main(int argc, char** argv) {
 
     //  Enable
     p->start();
+
+    printf("===========\n");
+    printf("===========\n");
 
     std::map<unsigned,unsigned> sizeMap;
 
@@ -182,6 +191,8 @@ int main(int argc, char** argv) {
             const EventHeader* eh = reinterpret_cast<const EventHeader*>(data);
             StreamIterator it = eh->streams();
             for(const StreamHeader* sh = it.first(); sh; sh=it.next()) {
+                if (lprint)
+                    sh->dump();
                 uint16_t s0;
                 const uint16_t* samples = sh->data();
                 //  sanity checks
@@ -211,7 +222,7 @@ int main(int argc, char** argv) {
                     }
                 }
                 //  Check series of 4 skip-samples
-                else {
+                else if (streams&3) {
                     for(unsigned i=0,j=0; i<sh->samples(); i++) {
                         if (samples[i]&0x8000) {
                             j += samples[i]&0x7fff;

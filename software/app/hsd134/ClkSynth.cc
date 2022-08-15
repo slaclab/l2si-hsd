@@ -499,6 +499,7 @@ void Pds::HSD::ClkSynth::setup(TimingType timing)
 void _setup(RegProxy*          _reg,
             const uint8_t*     write_values)
 {
+    printf("*** _setup ***\n");
   static const unsigned LOS_MASK  = 0x04;
   static const unsigned LOCK_MASK = 0x15;
 
@@ -555,7 +556,7 @@ void _setup(RegProxy*          _reg,
   } while( (v&LOCK_MASK) );
 
   clock_gettime(CLOCK_REALTIME, &tve);
-  printf("Time2 : %f sec\n", tdiff(tve,tvb));
+  printf("Time2 : %f sec\n", tdiff(tvb,tve));
 
   //  Copy FCAL values
   SET_REG(45,_reg[235]);

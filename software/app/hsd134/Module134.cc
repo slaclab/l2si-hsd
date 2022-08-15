@@ -120,7 +120,8 @@ void Module134::setup_timing()
       i2c_unlock();
 
       usleep(100000);
-      tpr.setLCLSII();
+      //      tpr.setLCLSII();
+      tpr.setLCLS();
       tpr.resetRxPll();
       usleep(1000000);
       tpr.resetBB();

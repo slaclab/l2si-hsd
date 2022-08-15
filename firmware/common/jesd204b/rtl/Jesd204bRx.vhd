@@ -170,13 +170,14 @@ begin
    -- Check JESD generics
    assert (((K_G * F_G) mod GT_WORD_SIZE_C) = 0) report "K_G setting is incorrect" severity failure;
 --   assert (F_G = 1 or F_G = 2 or (F_G = 4 and GT_WORD_SIZE_C = 4)) report "F_G setting must be 1,2,or 4*" severity failure;
+   assert (GT_WORD_SIZE_C = 8) report "GT_WORD_SIZE must be 8*" severity failure;
 
    -----------------------------------------------------------
    -- AXI Lite AXI clock domain crossed
    -----------------------------------------------------------
 
    GEN_rawData : for i in L_G-1 downto 0 generate
-      s_rawData(i) <= s_jesdGtRxArr(i).data;
+      s_rawData(i) <= s_jesdGtRxArr(i).data(31 downto 0);  -- monitor on axi-liete
    end generate GEN_rawData;
 
    -- axiLite register interface
