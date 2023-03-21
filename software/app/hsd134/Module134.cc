@@ -100,6 +100,23 @@ Module134* Module134::create(int fd)
 void Module134::setup_timing()
 {
   //
+  //  Determine timing mode from firmware image name
+  //
+  TimingType mode = LCLS;
+  {
+    struct AxiVersion axiv;
+    axiVersionGet(_fd, &axiv);
+
+    if (strstr((char*)axiv.buildString,"dma_sc"))
+      mode = LCLSII;
+
+    printf("buildString %s : mode %s\n",
+           (char*)axiv.buildString,
+           mode == LCLSII ? "LCLSII" : "LCLSI");
+
+  }
+
+  //
   //  Verify clock synthesizer is setup
   //  Necessary for timing and dual firefly channel pgp
   //
@@ -109,19 +126,25 @@ void Module134::setup_timing()
     double txclkr = tpr.txRefClockRate();
     printf("TxRefClk: %f MHz\n", txclkr);
 
-    static const double TXCLKR_MIN = 118.;
-    static const double TXCLKR_MAX = 120.;
-    if (txclkr < TXCLKR_MIN ||
-        txclkr > TXCLKR_MAX) {
+    static const double TXCLKR_MIN[] = { 118., 185. };
+    static const double TXCLKR_MAX[] = { 120., 187. };
+    if (txclkr < TXCLKR_MIN[mode] ||
+        txclkr > TXCLKR_MAX[mode]) {
       i2c_lock(I2cSwitch::LocalBus);  // ClkSynth is on local bus
-      i2c().clksynth.setup(LCLS);
-      //      i2c().clksynth.setup(LCLSII);
-      //      i2c().clksynth.setup(M64);
+      i2c().clksynth.setup(mode);
       i2c_unlock();
 
       usleep(100000);
-      //      tpr.setLCLSII();
-      tpr.setLCLS();
+      switch(mode) {
+      case LCLS:
+        tpr.setLCLS();
+        break;
+      case LCLSII:
+        tpr.setLCLSII();
+        break;
+      default:
+        break;
+      }
       tpr.resetRxPll();
       usleep(1000000);
       tpr.resetBB();
@@ -171,15 +194,17 @@ void Module134::setup_jesd(bool lAbortOnErr,
                            std::string& adc0,
                            std::string& adc1,
                            bool         lDualCh,
-                           InputChan    inputCh)
+                           InputChan    inputCh,
+                           bool         lInternalTiming)
 {
   i2c_lock(I2cSwitch::PrimaryFmc);
   Fmc134Cpld* cpld = &i2c().fmc_cpld;
   Fmc134Ctrl* ctrl = &p->fmc_ctrl;
   Reg* jesd0  = &p->surf_jesd0[0];
   Reg* jesd1  = &p->surf_jesd1[0];
-  //  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL))
-  while (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL)) {
+  while (cpld->default_clocktree_init(lInternalTiming ?
+                                      Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL :
+                                      Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL)) {
     if (lAbortOnErr)
       abort();
     usleep(1000);
@@ -471,14 +496,23 @@ void Module134::trig_lcls  (unsigned eventcode)
     tem().evr().trigger(1).enable(0);
 }
 
+void Module134::trig_rate  (unsigned frate)
+{
+    Pds::Mmhw::EvrV2Channel::FixedRate rate = Pds::Mmhw::EvrV2Channel::FixedRate(frate);
+    tem().evr().channel(0).enable(rate);
+    tem().evr().channel(1).enable(rate);
+    tem().evr().trigger(0).enable(0);
+    tem().evr().trigger(1).enable(0);
+}
+
 void Module134::sync       () {}
 
 void Module134::start      ()
 {
     chip(0).reg.start();
     chip(1).reg.start();
-    tem().det(0).start(0,0,16);
-    tem().det(1).start(0,0,16);
+    tem().det(0).start(1<<16,0,16);
+    tem().det(1).start(1<<16,0,16);
 }
 
 void Module134::stop       ()

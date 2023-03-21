@@ -13,6 +13,12 @@
 #include <new>
 
 #include "Module134.hh"
+#include "I2c134.hh"
+#include "Fmc134Cpld.hh"
+#include "TprCore.hh"
+#include "SysLog.hh"
+
+#define logging psalg::SysLog
 
 #include <string>
 
@@ -30,18 +36,22 @@ void usage(const char* p) {
 int main(int argc, char** argv) {
 
     extern char* optarg;
-    char* endptr;
 
     const char* dev="/dev/datadev_0";
+    bool reset = false;
     bool lDualCh = false;
     InputChan inputCh = CHAN_A0_2;
+    bool lInternalTiming = false;
     int c;
     bool lUsage = false;
 
-    while ( (c=getopt( argc, argv, "d:12ABh")) != EOF ) {
+    while ( (c=getopt( argc, argv, "d:12ABIrh")) != EOF ) {
         switch(c) {
         case 'd':
             dev = optarg;
+            break;
+        case 'r':
+            reset = true;
             break;
         case '1':
             lDualCh = false;
@@ -55,6 +65,9 @@ int main(int argc, char** argv) {
         case 'B':
             inputCh = CHAN_A1_3;
             break;
+        case 'I':
+            lInternalTiming = true;
+            break;
         case '?':
         default:
             lUsage = true;
@@ -67,6 +80,8 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
+    logging::init(0,LOG_DEBUG);
+
     int fd = open(dev, O_RDWR);
     if (fd<0) {
         perror("Open device failed");
@@ -75,12 +90,22 @@ int main(int argc, char** argv) {
 
     Module134* m = Module134::create(fd);
     m->dumpMap();
+    printf("--board status--\n");
     m->board_status();
     printf("--timing--\n");
     m->setup_timing();
 
+    if (reset) {
+        m->tpr().resetRxPll();
+        usleep(1000000);
+        m->tpr().resetBB();
+        m->tpr().resetCounts();
+    }
+
+    printf("tem remote id: %08x\n",m->remote_id());
+
     std::string adccal;
-    m->setup_jesd(false,adccal,adccal,lDualCh,inputCh);
+    m->setup_jesd(false,adccal,adccal,lDualCh,inputCh,lInternalTiming);
 
     unsigned busId = strtoul(dev+strlen(dev)-2,NULL,16);
     m->set_local_id(busId);

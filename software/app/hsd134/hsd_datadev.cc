@@ -23,6 +23,8 @@
 #include "Event.hh"
 #include "DmaDriver.h"
 #include "Reg.hh"
+#include "OptFmc.hh"
+#include "TriggerEventManager2.hh"
 
 using namespace Pds::HSD;
 
@@ -33,6 +35,7 @@ void usage(const char* p) {
     printf("Options:\n");
     printf("\t-d <dev>    : device file (default /dev/datadev_0)\n");
     printf("\t-e <evtcode>: eventcode for triggering (default 45)\n");
+    printf("\t-r <marker> : fixed rate marker for triggering\n");
     printf("\t-n <events> : acquire <nevents> events\n");
     printf("\t-L <samples>: samples to acquire\n");
     printf("\t-T <lo,hi>  : sparsification range\n");
@@ -68,6 +71,7 @@ int main(int argc, char** argv) {
     unsigned length  = 40;  
     unsigned nevents = 10;
     unsigned eventcode = 45;
+    int      rate      = -1;
     unsigned streams   = 0x88;
     //  sparsify values between lo_threshold and hi_threshold
     FexParams q;
@@ -77,13 +81,16 @@ int main(int argc, char** argv) {
     q.rows_after  =2;
     char* endptr;
   
-    while ( (c=getopt( argc, argv, "d:e:n:hDL:PRT:")) != EOF ) {
+    while ( (c=getopt( argc, argv, "d:e:r:n:hDL:PRT:")) != EOF ) {
         switch(c) {
         case 'd':
             dev = optarg;
             break;
         case 'e':
             eventcode = strtoul(optarg,NULL,0);
+            break;
+        case 'r':
+            rate = strtoul(optarg,NULL,0);
             break;
         case 'n':
             nevents = strtoul(optarg,NULL,0);
@@ -138,11 +145,15 @@ int main(int argc, char** argv) {
 
     Module134* p = Module134::create(fd);
     p->dumpMap();
+    p->optfmc().dump();
 
     if (lPattern)
         p->enable_test_pattern(Module134::Ramp);
     else
         p->disable_test_pattern();
+
+    printf("channel 0: %u \n",unsigned(p->tem().evr().channel(0)._counts));
+    printf("channel 1: %u \n",unsigned(p->tem().evr().channel(1)._counts));
 
     p->stop();
 
@@ -161,7 +172,10 @@ int main(int argc, char** argv) {
     p->sample_init(length, 1, 2, 0, streams, q);
 
     //  Setup trigger
-    p->trig_lcls( eventcode );
+    if (rate>=0)
+        p->trig_rate( rate );
+    else
+        p->trig_lcls( eventcode );
 
     const unsigned maxSize = 1<<24;
     uint32_t* data = new uint32_t[maxSize];

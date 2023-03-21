@@ -739,6 +739,7 @@ int32_t Fmc134Cpld::default_clocktree_init(unsigned clockmode)
     spi_write(i2c_unit, LMX_SELECT,  7, 0x004E211)     ;       // Works R/2 output on mux
 
     spi_write(i2c_unit, LMX_SELECT,  6, 0x000004C);
+
     //                if(rc!=UNITAPI_OK)     return rc;                                               // lOOK AT CHANGE mode TO USE CE pin... vco_sel_mode = 1
 
     spi_write(i2c_unit, LMX_SELECT,  5, 0x0030808);    // 0x0030800 = 68MHz < OSC_FREQ < 128M     0x005080 = OSC_Freq > 512MHz         0x0010800 = OSC_FREQ =< 64MHz

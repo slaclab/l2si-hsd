@@ -14,7 +14,12 @@ namespace Pds {
               _enable = 0;
           }
           void enable(unsigned code) {
-              _select = (0x20000 << 13) | (0x1000) | (code & 0xff);
+              _select = (0x20000 << 13) | (0x1000) | (code & 0x1ff);
+              _enable = 1;
+          }
+          enum FixedRate { _1Hz, _10Hz, _100Hz, _1kHz, _10kHz, _71kHz, _1MHz };
+          void enable(FixedRate r) {
+              _select = (0x20000 << 13) | (r & 0xf);
               _enable = 1;
           }
       public:
