@@ -21,8 +21,10 @@ target: prom
 # PRJ_VERSION = 0000000B  Synchr l0,l1 bits+tag in CDC.  Validate tag.
 # PRJ_VERSION = 0000000C  Add l2si-core trigfifo-fix
 # PRJ_VERSION = 0000000D  Remove data dump preventing long gate delays or widths
+# PRJ_VERSION = 0000000E  Add disableFull register to allow loopback mode running
 #
-export PRJ_VERSION = 0000000D
+
+export PRJ_VERSION = 0000000E
 
 # Define target part
 export PRJ_PART = XCKU085-FLVB1760-2-E

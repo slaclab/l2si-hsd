@@ -20,3 +20,83 @@ Some limits:
      hsd_6400m_dma_*
 	max waveform length = 4096 rows (40 samples/row)
 	max gate length     = 2**20 rows (6.73 ns/row SC, 6.47 ns/row NC)
+
+Rework for synchronousl clocking:
+  FMC126
+    +---------------------------------------------+
+    |A1                                           |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooo*ooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |K1                                           |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    | o o  o o  o o  o o  o o  o o  o o  o o  o o |
+    |  o    o    o    o    o    #    o    o    o  |
+    | o o  o o  o o  o o  o o  o o  o o  o o  o o |
+    +---------------------------------------------+
+       A1   A0   R0   R1   CO   CI   TR   A3   A2
+      
+  FMC134
+    FPGA AL24 (pllRefClk)  ->  FMC F5 (HA00_N_CC) [*]
+      -> H23 on FM134 reverse side (stacked connector)
+     connect to FMC134 CI center pin [#]
+
+    +---------------------------------------------+
+    |A1                                           |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooo*ooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |   oooooooooooooooooooooooooooooooooooooooo  |
+    |K1                                           |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    |                                             |
+    | o o  o o  o o  o o  o o  o o  o o  o o  o o |
+    |  o    o    o    o    o    #    o    o    o  |
+    | o o  o o  o o  o o  o o  o o  o o  o o  o o |
+    +---------------------------------------------+
+       A1   A0   R0   R1   CO   CI   TR   A3   A2
+      

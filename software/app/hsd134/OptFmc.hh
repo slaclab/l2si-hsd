@@ -18,6 +18,7 @@ namespace Pds {
       Pds::Mmhw::Reg phaseValue_1;
     public:
       void resetPgp();
+      void dump() const;
     };
   };
 };

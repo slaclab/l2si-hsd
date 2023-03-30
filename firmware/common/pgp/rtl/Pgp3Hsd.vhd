@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2020-03-06
+-- Last update: 2023-03-15
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -68,6 +68,7 @@ entity Pgp3Hsd is
      axilWriteMaster : in  AxiLiteWriteMasterType;
      axilWriteSlave  : out AxiLiteWriteSlaveType;
      holdoffSof      : in  sl := '0';
+     disableFull     : in  sl := '0';
      --
      ibRst           : in  sl;
      linkUp          : out sl;
@@ -82,7 +83,7 @@ entity Pgp3Hsd is
      --
      ibClk           : in  sl := '0';
      ibMaster        : out AxiStreamMasterType;
-     ibSlave         : in  AxiStreamSlaveType := AXI_STREAM_SLAVE_INIT_C );
+     ibSlave         : in  AxiStreamSlaveType := AXI_STREAM_SLAVE_FORCE_C );
 
 end Pgp3Hsd;
 
@@ -108,6 +109,7 @@ architecture top_level_app of Pgp3Hsd is
   signal iqpllRst       : sl;
   signal full           : sl;
   signal holdoffSofS    : sl;
+  signal disableFullS   : sl;
   
   type RegType is record
     tLast  : sl;
@@ -235,25 +237,32 @@ begin
                dataIn  => holdoffSof,
                dataOut => holdoffSofS );
 
+  U_DisableFull : entity surf.Synchronizer
+    port map ( clk     => pgpClk,
+               dataIn  => disableFull,
+               dataOut => disableFullS );
+
   --
   --  While the downstream partner asserts full, don't start a new packet
   --
-  comb : process (r, pgpRst, pgpObMaster, pgpTxSlaves, full, holdoffSofS) is
+  comb : process (r, pgpRst, pgpObMaster, pgpTxSlaves, full, holdoffSofS, disableFullS) is
     variable v : RegType;
+    variable fullq : sl;
   begin
     v := r;
     v.opCode := '0';
     v.count  := r.count+1;
     
     pgpTxMasters(0) <= pgpObMaster;
-
+    fullq    := full and not disableFullS;
+    
     --
     --  I think I need this to prevent AxiResize from misaligning data
     --  on the receive end, but it introduces the possibility of
     --  overflowing buffers on the receive side.  (Fix the receive side)
     --
     if holdoffSofS = '1' then
-      if (full = '0' or r.tLast = '0') then
+      if (fullq = '0' or r.tLast = '0') then
         if pgpObMaster.tValid = '1' and pgpTxSlaves(0).tReady = '1' then
           v.tLast                := pgpObMaster.tLast;
         end if;
@@ -264,7 +273,7 @@ begin
         pgpObSlave.tReady        <= '0';
       end if;
     else
-      if full = '0' then
+      if fullq = '0' then
         pgpTxMasters(0).tValid   <= pgpObMaster.tValid;
         pgpObSlave.tReady        <= pgpTxSlaves(0).tReady;
       else

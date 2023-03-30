@@ -63,7 +63,8 @@ namespace Pds {
                             std::string& calib_adc0,
                             std::string& calib_adc1,
                             bool         lDualCh=false,
-                            InputChan    inputCh=CHAN_A0_2);
+                            InputChan    inputCh=CHAN_A0_2,
+                            bool         lInternalTiming=false);
       void     write_calib (const char*);
       void     board_status();
 
@@ -89,6 +90,7 @@ namespace Pds {
                         const FexParams& params);
 
       void trig_lcls  (unsigned eventcode);
+      void trig_rate  (unsigned rate);
       void sync       ();
       void start      ();
       void stop       ();

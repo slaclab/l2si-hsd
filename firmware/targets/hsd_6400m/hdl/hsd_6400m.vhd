@@ -258,6 +258,7 @@ architecture rtl of hsd_6400m is
     pgpTxRst  : sl;
     pgpRxRst  : sl;
     pgpHoldoffSof : sl;
+    pgpDisableFull : slv(1 downto 0);
     txId      : slv(15 downto 0);
   end record;
   constant REG_INIT_C : RegType := (
@@ -272,6 +273,7 @@ architecture rtl of hsd_6400m is
     pgpTxRst  => '0',
     pgpRxRst  => '0',
     pgpHoldoffSof  => '0',
+    pgpDisableFull  => "00",
     txId      => (others=>'0') );
 
   signal r    : RegType := REG_INIT_C;
@@ -968,6 +970,7 @@ begin  -- rtl
                  axilWriteMaster => mPgpAxilWriteMasters(i),
                  axilWriteSlave  => mPgpAxilWriteSlaves (i),
                  holdoffSof      => r.pgpHoldoffSof,
+                 disableFull     => r.pgpDisableFull(i/4),
                  --
                  --  App Interface
                  ibRst           => dmaRst(i/4),
@@ -1063,6 +1066,7 @@ begin  -- rtl
     axiSlaveRegister ( ep, toSlv(4,12),  5, v.pgpTxRst);
     axiSlaveRegister ( ep, toSlv(4,12),  6, v.pgpRxRst);
     axiSlaveRegister ( ep, toSlv(4,12),  7, v.pgpHoldoffSof);
+    axiSlaveRegister ( ep, toSlv(4,12),  8, v.pgpDisableFull);
 
     for i in 0 to NUM_MON_CLKS-1 loop
       axiSlaveRegisterR( ep, toSlv(4*i+8,12), 0, monClkRate(i)(28 downto 0));

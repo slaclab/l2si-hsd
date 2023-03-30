@@ -22,8 +22,9 @@ target: prom
 # PRJ_VERSION = 0000000C  Add l2si-core trigfifo-fix
 # PRJ_VERSION = 0000000D  Remove data dump preventing long gate delays or widths
 # PRJ_VERSION = 0000000E  Factor code to allow different timing clksel "LCLS1","LCLS2","SELECT"
+# PRJ_VERSION = 0000000F  Add SFP I2C access
 #
-export PRJ_VERSION = 0000000E
+export PRJ_VERSION = 0000000F
 
 # Define target part
 export PRJ_PART = XCKU085-FLVB1760-2-E

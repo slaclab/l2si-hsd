@@ -17,7 +17,7 @@ package FmcPkg is
   subtype AdcWord is slv(11 downto 0);
   type AdcWordArray is array(natural range<>) of AdcWord;
   
-  constant DEVICE_MAP_C : I2cAxiLiteDevArray(12 downto 0) := (
+  constant DEVICE_MAP_C : I2cAxiLiteDevArray(14 downto 0) := (
     -----------------------
     -- PC821 I2C DEVICES --
     -----------------------
@@ -49,7 +49,14 @@ package FmcPkg is
     --  FMC EEPROM
     11 => MakeI2cAxiLiteDevType( "1010000",8, 8, '0' ),
     --  FMC GPIO
-    12 => MakeI2cAxiLiteDevType( "0111010",8, 8, '0' )
+    12 => MakeI2cAxiLiteDevType( "0111010",8, 8, '0' ),
+    -----------------------------
+    --  SFP I2C Bus
+    -----------------------------
+    --  SFP A0h
+    13 => MakeI2cAxiLiteDevType( "1010000",8, 8, '0', '1' ),
+    --  SFP A2h
+    14 => MakeI2cAxiLiteDevType( "1010001",8, 8, '0', '1' )
     );
 
   component jesd204b_16lane is
