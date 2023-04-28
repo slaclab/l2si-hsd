@@ -1,6 +1,6 @@
 libnames := hsd134
 libsrcs_hsd134 := $(filter-out hsd_init.cc hsd_pgp.cc hsd_sim.cc hsd_valid.cc hsd_xvc.cc hsd_datadev.cc hsd_validate.cc hsd_validate_sim.cc hsd_eyescan.cc hsd_reg.cc hsdRead.cc promload.cc, $(wildcard *.cc))
-libincs_hsd134 := Module134.hh ModuleBase.hh TprCore.hh AxiVersion.h Event.hh Globals.hh DmaDriver.h EnvMon.hh I2cSwitch.hh RegProxy.hh
+libincs_hsd134 := Module134.hh ModuleBase.hh TprCore.hh AxiVersion.h Event.hh Globals.hh DmaDriver.h EnvMon.hh I2cSwitch.hh RegProxy.hh Reg.hh
 
 tgtnames := hsd_init
 tgtsrcs_hsd_init := hsd_init.cc
