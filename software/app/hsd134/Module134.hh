@@ -91,6 +91,8 @@ namespace Pds {
 
       void trig_lcls  (unsigned eventcode);
       void trig_rate  (unsigned rate);
+      void trig_acrate(unsigned rate, unsigned timeslot);
+      void trig_seq   (unsigned engine, unsigned bit) { trig_lcls(engine*16+bit); }
       void sync       ();
       void start      ();
       void stop       ();

@@ -505,6 +505,15 @@ void Module134::trig_rate  (unsigned frate)
     tem().evr().trigger(1).enable(0);
 }
 
+void Module134::trig_acrate  (unsigned acrate, unsigned timeslot_mask)
+{
+    Pds::Mmhw::EvrV2Channel::ACRate rate = Pds::Mmhw::EvrV2Channel::ACRate(acrate);
+    tem().evr().channel(0).enable(rate,timeslot_mask);
+    tem().evr().channel(1).enable(rate,timeslot_mask);
+    tem().evr().trigger(0).enable(0);
+    tem().evr().trigger(1).enable(0);
+}
+
 void Module134::sync       () {}
 
 void Module134::start      ()

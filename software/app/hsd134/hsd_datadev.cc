@@ -36,6 +36,7 @@ void usage(const char* p) {
     printf("\t-d <dev>    : device file (default /dev/datadev_0)\n");
     printf("\t-e <evtcode>: eventcode for triggering (default 45)\n");
     printf("\t-r <marker> : fixed rate marker for triggering\n");
+    printf("\t-a <marker,timeslots> : AC rate marker and timeslot bit-mask [0-based] for triggering\n");
     printf("\t-n <events> : acquire <nevents> events\n");
     printf("\t-L <samples>: samples to acquire\n");
     printf("\t-T <lo,hi>  : sparsification range\n");
@@ -72,6 +73,8 @@ int main(int argc, char** argv) {
     unsigned nevents = 10;
     unsigned eventcode = 45;
     int      rate      = -1;
+    int      acrate    = -1;
+    unsigned tsmask    = 0;
     unsigned streams   = 0x88;
     //  sparsify values between lo_threshold and hi_threshold
     FexParams q;
@@ -81,8 +84,18 @@ int main(int argc, char** argv) {
     q.rows_after  =2;
     char* endptr;
   
-    while ( (c=getopt( argc, argv, "d:e:r:n:hDL:PRT:")) != EOF ) {
+    while ( (c=getopt( argc, argv, "a:d:e:r:n:hDL:PRT:")) != EOF ) {
         switch(c) {
+        case 'a':
+            acrate = strtoul(optarg,&endptr,0);
+            if (endptr[0]==',')
+                tsmask = strtoul(endptr+1,&endptr,0);
+            else {
+                printf("Error parsing acrate,timeslots arguments\n");
+                usage(argv[0]);
+                exit(1);
+            }
+            break;
         case 'd':
             dev = optarg;
             break;
@@ -174,6 +187,8 @@ int main(int argc, char** argv) {
     //  Setup trigger
     if (rate>=0)
         p->trig_rate( rate );
+    else if (acrate>=0)
+        p->trig_acrate( acrate, tsmask );
     else
         p->trig_lcls( eventcode );
 

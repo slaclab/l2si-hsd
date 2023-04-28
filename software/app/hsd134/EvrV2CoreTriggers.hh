@@ -22,6 +22,11 @@ namespace Pds {
               _select = (0x20000 << 13) | (r & 0xf);
               _enable = 1;
           }
+          enum ACRate { _1HzAC, _5HzAC, _10HzAC, _30HzAC, _60HzAC };
+          void enable(ACRate r, unsigned tsmask) { // (tsmask&1)=timeslot 1
+              _select = (0x20000 << 13) | (0x0800) | (tsmask<<3) | (r & 0x7);
+              _enable = 1;
+          }
       public:
           Reg               _enable;
           Reg               _select;
