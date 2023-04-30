@@ -37,6 +37,7 @@ void usage(const char* p) {
     printf("\t-e <evtcode>: eventcode for triggering (default 45)\n");
     printf("\t-r <marker> : fixed rate marker for triggering\n");
     printf("\t-a <marker,timeslots> : AC rate marker and timeslot bit-mask [0-based] for triggering\n");
+    printf("\t-g <group>  : readout group for triggering\n");
     printf("\t-n <events> : acquire <nevents> events\n");
     printf("\t-L <samples>: samples to acquire\n");
     printf("\t-T <lo,hi>  : sparsification range\n");
@@ -74,6 +75,7 @@ int main(int argc, char** argv) {
     unsigned eventcode = 45;
     int      rate      = -1;
     int      acrate    = -1;
+    int      group     = -1;
     unsigned tsmask    = 0;
     unsigned streams   = 0x88;
     //  sparsify values between lo_threshold and hi_threshold
@@ -84,7 +86,7 @@ int main(int argc, char** argv) {
     q.rows_after  =2;
     char* endptr;
   
-    while ( (c=getopt( argc, argv, "a:d:e:r:n:hDL:PRT:")) != EOF ) {
+    while ( (c=getopt( argc, argv, "a:d:e:g:r:n:hDL:PRT:")) != EOF ) {
         switch(c) {
         case 'a':
             acrate = strtoul(optarg,&endptr,0);
@@ -101,6 +103,9 @@ int main(int argc, char** argv) {
             break;
         case 'e':
             eventcode = strtoul(optarg,NULL,0);
+            break;
+        case 'g':
+            group = strtoul(optarg,NULL,0);
             break;
         case 'r':
             rate = strtoul(optarg,NULL,0);
@@ -189,6 +194,8 @@ int main(int argc, char** argv) {
         p->trig_rate( rate );
     else if (acrate>=0)
         p->trig_acrate( acrate, tsmask );
+    else if (group>=0)
+        p->trig_group( group );
     else
         p->trig_lcls( eventcode );
 
@@ -222,7 +229,7 @@ int main(int argc, char** argv) {
             for(const StreamHeader* sh = it.first(); sh; sh=it.next()) {
                 if (lprint)
                     sh->dump();
-                uint16_t s0;
+                uint16_t s0=0;
                 const uint16_t* samples = sh->data();
                 //  sanity checks
                 //  No sparsification in other streams

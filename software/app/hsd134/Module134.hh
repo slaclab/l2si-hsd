@@ -93,6 +93,8 @@ namespace Pds {
       void trig_rate  (unsigned rate);
       void trig_acrate(unsigned rate, unsigned timeslot);
       void trig_seq   (unsigned engine, unsigned bit) { trig_lcls(engine*16+bit); }
+      void trig_group (unsigned group);
+
       void sync       ();
       void start      ();
       void stop       ();
@@ -116,6 +118,8 @@ namespace Pds {
 
       int               _fd;
       mutable sem_t     _sem_i2c;
+
+      unsigned          _group;
     };
   };
 };

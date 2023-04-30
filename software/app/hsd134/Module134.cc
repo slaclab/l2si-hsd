@@ -494,6 +494,7 @@ void Module134::trig_lcls  (unsigned eventcode)
     tem().evr().channel(1).enable(eventcode);
     tem().evr().trigger(0).enable(0);
     tem().evr().trigger(1).enable(0);
+    _group = 1<<16;
 }
 
 void Module134::trig_rate  (unsigned frate)
@@ -503,6 +504,7 @@ void Module134::trig_rate  (unsigned frate)
     tem().evr().channel(1).enable(rate);
     tem().evr().trigger(0).enable(0);
     tem().evr().trigger(1).enable(0);
+    _group = 1<<16;
 }
 
 void Module134::trig_acrate  (unsigned acrate, unsigned timeslot_mask)
@@ -512,6 +514,12 @@ void Module134::trig_acrate  (unsigned acrate, unsigned timeslot_mask)
     tem().evr().channel(1).enable(rate,timeslot_mask);
     tem().evr().trigger(0).enable(0);
     tem().evr().trigger(1).enable(0);
+    _group = 1<<16;
+}
+
+void Module134::trig_group  (unsigned group)
+{
+    _group = group;
 }
 
 void Module134::sync       () {}
@@ -520,8 +528,8 @@ void Module134::start      ()
 {
     chip(0).reg.start();
     chip(1).reg.start();
-    tem().det(0).start(1<<16,0,16);
-    tem().det(1).start(1<<16,0,16);
+    tem().det(0).start(_group,0,16);
+    tem().det(1).start(_group,0,16);
 }
 
 void Module134::stop       ()
