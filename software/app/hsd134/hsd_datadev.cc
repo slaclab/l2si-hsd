@@ -124,6 +124,7 @@ int main(int argc, char** argv) {
             break;
         case 'R':
             streams |= 0x44;
+            break;
         case 'T':
             q.lo_threshold = strtoul(optarg  ,&endptr,0);
             q.hi_threshold = strtoul(endptr+1,&endptr,0);
