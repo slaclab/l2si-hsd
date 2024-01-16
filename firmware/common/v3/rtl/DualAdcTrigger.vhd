@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2022-01-10
+-- Last update: 2024-01-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -54,6 +54,7 @@ entity DualAdcTrigger is
          ql1ina      : out sl;
          clear       : out sl;
          start       : out sl;
+         l0raw       : out sl;
          l0tag       : out slv(4 downto 0);
          l1tag       : out slv(4 downto 0) );
 end DualAdcTrigger;
@@ -65,6 +66,7 @@ architecture mapping of DualAdcTrigger is
     afullcnt : slv(31 downto 0);
     clear    : sl;
     start    : sl;
+    l0raw    : sl;
     l1in     : slv(1 downto 0);
     l1ina    : slv(1 downto 0);
   end record;
@@ -74,6 +76,7 @@ architecture mapping of DualAdcTrigger is
     afullcnt  => (others=>'0'),
     clear     => '1',
     start     => '0',
+    l0raw     => '0',
     l1in      => (others=>'0'),
     l1ina     => (others=>'0') );
 
@@ -93,6 +96,7 @@ begin
   ql1ina    <= r.l1ina(0);
   clear     <= r.clear;
   start     <= r.start;
+  l0raw     <= r.l0raw;
   l0tag     <= triggerDataSync.l0Tag;
   l1tag     <= triggerDataSync.l1Tag;
   
@@ -139,8 +143,10 @@ begin
     v.clear := not uOr(enable);
     
     v.start := '0';
+    v.l0Raw := '0';
     if l0ina = '1' then
       v.start := '1';
+      v.l0raw := triggerDataSync.l0Raw;
     end if;
     
     if rst='1' then

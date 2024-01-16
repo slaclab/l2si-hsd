@@ -24,7 +24,7 @@ target: prom
 # PRJ_VERSION = 0000000E  Add disableFull register to allow loopback mode running
 #
 
-export PRJ_VERSION = 0000000E
+#export PRJ_VERSION = 0000000E
 
 # Define target part
 export PRJ_PART = XCKU085-FLVB1760-2-E
@@ -36,4 +36,5 @@ export PRJ_FMC = 134
 export TOP_DIR = $(abspath $(PWD)/../..)
 
 # Use top level makefile
+include ../shared_config.mk
 include $(TOP_DIR)/submodules/ruckus/system_vivado.mk

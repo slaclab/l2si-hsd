@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-07-08
+-- Last update: 2024-01-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -113,6 +113,7 @@ architecture mapping of ChipAdcEvent is
   signal ql1ina : sl;
   signal start  : sl;
   signal clear : sl;
+  signal l0raw : sl;
   signal l0tag : slv(4 downto 0);
   signal l1tag : slv(4 downto 0);
   
@@ -194,6 +195,7 @@ begin  -- mapping
                dvalid          => adcValid,
                l1in            => ql1in,
                l1ina           => ql1ina,
+               l0raw           => l0raw,
                l0tag           => l0tag,
                l1tag           => l1tag,
                l1a             => open,
@@ -251,6 +253,7 @@ begin  -- mapping
                ql1ina      => ql1ina,
                clear       => clear,
                start       => start,
+               l0raw       => l0raw,
                l0tag       => l0tag,
                l1tag       => l1tag );
 

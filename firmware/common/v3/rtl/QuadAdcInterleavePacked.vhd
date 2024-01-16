@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-07-07
+-- Last update: 2024-01-12
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -60,6 +60,7 @@ entity QuadAdcInterleavePacked is
     dvalid          :  in sl;
     l1in            :  in sl;
     l1ina           :  in sl;
+    l0raw           :  in sl;
     l0tag           :  in slv       (4 downto 0);
     l1tag           :  in slv       (4 downto 0);
     l1v             : out sl;
@@ -106,7 +107,8 @@ architecture mapping of QuadAdcInterleavePacked is
   constant PIL_C : integer := 5;
   
   type RegType is record
-    fexEnable  : slv(NSTREAMS_C-1 downto 0);
+    fexEnable  : slv(NSTREAMS_C-1 downto 0);  -- include based on prescale
+    fexRaw     : slv(NSTREAMS_C-1 downto 0);  -- include based on l0Raw flag
     fexPrescale: Slv10Array(NSTREAMS_C-1 downto 0);
     fexPreCount: Slv10Array(NSTREAMS_C-1 downto 0);
     fexBegin   : Slv20Array(NSTREAMS_C-1 downto 0);
@@ -139,6 +141,7 @@ architecture mapping of QuadAdcInterleavePacked is
 
   constant REG_INIT_C : RegType := (
     fexEnable  => (others=>'0'),
+    fexRaw     => (others=>'0'),
     fexPrescale=> (others=>(others=>'0')),
     fexPreCount=> (others=>(others=>'0')),
     fexBegin   => (others=>(others=>'0')),
@@ -433,7 +436,7 @@ begin  -- mapping
     status(i) <= (others=>CACHE_INIT_C);
   end generate;
   
-  process (r, rst, start, clear, free, nfree, l1in, l1ina, 
+  process (r, rst, start, clear, free, nfree, l0raw, l1in, l1ina, 
            axisMasters, maxisSlave, axisSlaveTmp, cntOflow, rdaddr, wraddr,
            maxilWriteMasters, maxilReadMasters) is
     variable v     : RegType;
@@ -507,6 +510,7 @@ begin  -- mapping
 
     axiSlaveRegister ( ep, x"00", 0, v.fexEnable );
     axiSlaveRegister ( ep, x"00", 8, v.aaFullN );
+    axiSlaveRegister ( ep, x"00",16, v.fexRaw );
 
     axiSlaveRegisterR( ep, x"04", 0, muxSlVectorArray(cntOflow,NSTREAMS_C) );
     axiSlaveRegisterR( ep, x"04",28, toSlv(NSTREAMS_C,4) );
@@ -549,6 +553,9 @@ begin  -- mapping
             v.skip       (i) := '1';
             v.fexPreCount(i) := r.fexPreCount(i)+1;
           end if;
+        elsif r.fexRaw(i)='1' then
+          v.start      (i) := '1';
+          v.skip       (i) := not l0raw;
         else
           v.fexPreCount(i) := (others=>'0');
         end if;
