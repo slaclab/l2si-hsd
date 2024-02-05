@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2023-03-15
+-- Last update: 2024-02-05
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -189,7 +189,7 @@ begin
 
   U_Pgp3 : entity surf.Pgp3GthUs
     generic map ( NUM_VC_G     => NUM_VC_C,
-                  EN_DRP_G     => false,
+                  EN_DRP_G     => true,
                   EN_PGP_MON_G => true,
                   AXIL_BASE_ADDR_G => AXIL_BASE_ADDR_G )
     port map ( -- Stable Clock and Reset
