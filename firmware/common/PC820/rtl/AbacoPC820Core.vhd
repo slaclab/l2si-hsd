@@ -350,10 +350,10 @@ begin
          FCSBO     => flash_nce,  -- 1-bit input: Contols the FCS_B pin for flash access
          FCSBTS    => '0',              -- 1-bit input: Tristate the FCS_B pin
          GSR       => '0',  -- 1-bit input: Global Set/Reset input (GSR cannot be used for the port name)
-         GTS       => '1',  -- 1-bit input: Global 3-state input (GTS cannot be used for the port name)
+         GTS       => '0',  -- 1-bit input: Global 3-state input (GTS cannot be used for the port name)
          KEYCLEARB => '0',  -- 1-bit input: Clear AES Decrypter Key input from Battery-Backed RAM (BBRAM)
          PACK      => '0',  -- 1-bit input: PROGRAM acknowledge input
-         USRCCLKO  => flash_clk,         -- 1-bit input: User CCLK input
+         USRCCLKO  => '0',         -- 1-bit input: User CCLK input
          USRCCLKTS => '1',  -- 1-bit input: User CCLK 3-state enable input
          USRDONEO  => '0',  -- 1-bit input: User DONE pin output control
          USRDONETS => '1');  -- 1-bit input: User DONE 3-state enable output
@@ -377,23 +377,50 @@ begin
                   T  => flash_data_tri );
    end generate GEN_FLASH;
 
-   U_FLASH : entity work.parallel_flash_if
-     generic map ( START_ADDR => x"0000000",
-                   STOP_ADDR  => x"0000020" )
-     port map ( flash_clk       => flash_clk,
-                axilClk         => sysClock,
-                axilRst         => sysReset,
-                axilWriteMaster => flsWriteMaster,
-                axilWriteSlave  => flsWriteSlave,
-                axilReadMaster  => flsReadMaster,
-                axilReadSlave   => flsReadSlave,
-                flash_address   => flashAddr,
-                flash_data_o    => flash_data_out,
-                flash_data_i    => flash_data_in ,
-                flash_data_tri  => flash_data_tri,
-                flash_noe       => flashOe_n,
-                flash_nwe       => flashWe_n,
-                flash_nce       => flash_nce );
+   GEN_BPI : if true generate
+      U_BootProm : entity surf.AxiMicronMt28ewReg
+         generic map (
+            TPD_G          => TPD_G,
+            AXI_CLK_FREQ_G => 125.0E+6)
+         port map (
+            -- FLASH Interface
+            flashAddr      => flashAddr,
+            flashRstL      => open,
+            flashCeL       => flash_nce,
+            flashOeL       => flashOe_n,
+            flashWeL       => flashWe_n,
+            flashTri       => flash_data_tri,
+            flashDin       => flash_data_out,
+            flashDout      => flash_data_in,
+            -- AXI-Lite Register Interface
+            axiReadMaster  => flsReadMaster,
+            axiReadSlave   => flsReadSlave,
+            axiWriteMaster => flsWriteMaster,
+            axiWriteSlave  => flsWriteSlave,
+            -- Clocks and Resets
+            axiClk         => axilClk,
+            axiRst         => axilRst);
+   end generate;
+
+   GEN_PFI : if false generate
+     U_FLASH : entity work.parallel_flash_if
+       generic map ( START_ADDR => x"0000000",
+                     STOP_ADDR  => x"0000020" )
+       port map ( flash_clk       => flash_clk,
+                  axilClk         => axilClk,
+                  axilRst         => axilRst,
+                  axilWriteMaster => flsWriteMaster,
+                  axilWriteSlave  => flsWriteSlave,
+                  axilReadMaster  => flsReadMaster,
+                  axilReadSlave   => flsReadSlave,
+                  flash_address   => flashAddr,
+                  flash_data_o    => flash_data_out,
+                  flash_data_i    => flash_data_in ,
+                  flash_data_tri  => flash_data_tri,
+                  flash_noe       => flashOe_n,
+                  flash_nwe       => flashWe_n,
+                  flash_nce       => flash_nce );
+   end generate;
 
    ---------------
    -- AXI PCIe DMA

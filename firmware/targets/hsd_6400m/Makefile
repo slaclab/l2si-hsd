@@ -1,5 +1,6 @@
 export GIT_BYPASS = 1
 export REMOVE_UNUSED_CODE = 1
+export OVERRIDE_SUBMODULE_LOCKS = 1
 export TIMING_EXT_PKG = 1
 
 # Define target output

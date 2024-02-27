@@ -21,6 +21,10 @@ set_clock_groups -asynchronous \
                  -group [get_clocks -include_generated_clocks lmk_devclk_bufg] \
                  -group [get_clocks -include_generated_clocks pgpRefClk]
 
+set_clock_groups -asynchronous \
+		 -group [get_clocks -of_objects [get_pins U_Core/U_Core/U_REG/U_Version/GEN_DEVICE_DNA.DeviceDna_1/GEN_ULTRA_SCALE.DeviceDnaUltraScale_Inst/BUFGCE_DIV_Inst/O]] \
+		 -group [get_clocks -of_objects [get_pins U_Core/U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/inst/AbacoPc821PciePhy_pcie3_ip_gt_top_i/phy_clk_i/bufg_gt_userclk/O]]
+		 
 set_false_path -from [get_ports {pg_m2c[0]}]
 set_false_path -from [get_ports {prsnt_m2c_l[0]}]
 
