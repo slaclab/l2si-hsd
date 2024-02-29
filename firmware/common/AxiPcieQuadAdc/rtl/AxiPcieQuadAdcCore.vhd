@@ -5,7 +5,7 @@
 -- Author     : Larry Ruckman  <ruckman@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-02-12
--- Last update: 2024-02-27
+-- Last update: 2024-02-28
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -394,7 +394,7 @@ begin
   
   U_I2C : entity surf.AxiI2cRegMaster
     generic map ( DEVICE_MAP_G   => DEVICE_MAP_C,
-                  AXI_CLK_FREQ_G => 125.0E+6 )
+                  AXI_CLK_FREQ_G => 250.0E+6 )
     port map ( scl            => scl,
                sda            => sda,
                axiReadMaster  => intReadMasters (0),
@@ -403,6 +403,20 @@ begin
                axiWriteSlave  => intWriteSlaves (0),
                axiClk         => axiClk,
                axiRst         => axiRst );
-  
+
+  U_AXIL_ASYNC : entity surf.AxiLiteAsync
+    port map ( sAxiClk         => axiClk,
+               sAxiClkRst      => axiRst,
+               sAxiReadMaster  => axilReadMasters (APP_INDEX_C),
+               sAxiReadSlave   => axilReadSlaves  (APP_INDEX_C),
+               sAxiWriteMaster => axilWriteMasters(APP_INDEX_C),
+               sAxiWriteSlave  => axilWriteSlaves (APP_INDEX_C),
+               mAxiClk         => axilClk,
+               mAxiClkRst      => axilRst,
+               mAxiReadMaster  => appReadMaster,
+               mAxiReadSlave   => appReadSlave,
+               mAxiWriteMaster => appWriteMaster,
+               mAxiWriteSlave  => appWriteSlave );
+
 end mapping;
 
