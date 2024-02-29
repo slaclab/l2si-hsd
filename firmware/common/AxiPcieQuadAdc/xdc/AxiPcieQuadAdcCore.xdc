@@ -27,8 +27,11 @@ set_property PACKAGE_PIN M39 [get_ports timingTxN]
 set_property PACKAGE_PIN M38 [get_ports timingTxP]
 
 create_generated_clock -name pciClk [get_pins U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_userclk/O]
-
-set_clock_groups -asynchronous -group [get_clocks dnaClk] -group [get_clocks pciClk]
+create_generated_clock -name axilClk [get_pins U_Core/U_Clk/MmcmGen.U_Mmcm/CLKOUT0]
+set_clock_groups -asynchronous \
+		 -group [get_clocks dnaClk] \
+		 -group [get_clocks pciClk] \
+		 -group [get_clocks axilClk]
 set_clock_groups -asynchronous -group [get_clocks evrClk] -group [get_clocks timingFbClk]
 
 set_property LOC PCIE_3_1_X0Y0 [get_cells U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst]
