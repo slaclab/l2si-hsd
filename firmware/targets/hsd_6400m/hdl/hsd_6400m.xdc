@@ -21,15 +21,15 @@ set_clock_groups -asynchronous \
                  -group [get_clocks -include_generated_clocks lmk_devclk_bufg] \
                  -group [get_clocks -include_generated_clocks pgpRefClk]
 
-set_clock_groups -asynchronous \
-		 -group [get_clocks -of_objects [get_pins U_Core/U_Core/U_REG/U_Version/GEN_DEVICE_DNA.DeviceDna_1/GEN_ULTRA_SCALE.DeviceDnaUltraScale_Inst/BUFGCE_DIV_Inst/O]] \
-		 -group [get_clocks -of_objects [get_pins U_Core/U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/inst/AbacoPc821PciePhy_pcie3_ip_gt_top_i/phy_clk_i/bufg_gt_userclk/O]]
+#set_clock_groups -asynchronous \
+#		 -group [get_clocks -of_objects [get_pins U_Core/U_Core/U_REG/U_Version/GEN_DEVICE_DNA.DeviceDna_1/GEN_ULTRA_SCALE.DeviceDnaUltraScale_Inst/BUFGCE_DIV_Inst/O]] \
+#		 -group [get_clocks -of_objects [get_pins U_Core/U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/inst/AbacoPc821PciePhy_pcie3_ip_gt_top_i/phy_clk_i/bufg_gt_userclk/O]]
 		 
 set_false_path -from [get_ports {pg_m2c[0]}]
 set_false_path -from [get_ports {prsnt_m2c_l[0]}]
 
 create_generated_clock -name dmaClk [get_pins xcvr_wrapper_inst0/RefClk_BUFG_Div2/O]
-create_generated_clock -name pciClk [get_pins U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_userclk/O]
+#create_generated_clock -name pciClk [get_pins U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_userclk/O]
 
 create_generated_clock -name phyRxClk_7 [get_pins {GEN_PGP[7].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_10G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp10G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]
 
@@ -111,7 +111,7 @@ set_clock_groups -asynchronous \
                  -group [get_clocks phyRxClk_0] \
                  -group [get_clocks pgpClk_0]
 
-create_generated_clock -name pipeClk [get_pins U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_pclk/O]
+#create_generated_clock -name pipeClk [get_pins U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/gt_top_i/phy_clk_i/bufg_gt_pclk/O]
 
 set_clock_groups -asynchronous \
                  -group [get_clocks pciRefClkP] \
