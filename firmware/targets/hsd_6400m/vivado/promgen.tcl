@@ -11,5 +11,8 @@ set format     "mcs"
 set inteface   "bpix16"
 set size       "128"
 
-set outputFile    "$::env(IMPL_DIR)/$::env(PROJECT).mcs"
-set imagesFile    "$::env(IMAGES_DIR)/$::env(IMAGENAME).mcs"
+#  Option to load in upper boot memory (I think the address is 16-bit words)
+#set size       "256"
+#set loadbit "up 0x02000000 $::env(IMPL_DIR)/$::env(PROJECT).mcs"
+#set outputFile    "$::env(IMPL_DIR)/$::env(PROJECT).mcs"
+#set imagesFile    "$::env(IMAGES_DIR)/$::env(IMAGENAME).mcs"

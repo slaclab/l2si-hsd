@@ -5,18 +5,18 @@
 
 set_property ASYNC_REG true [get_cells -hierarchical *crossDomainSyncReg_reg*]
 
-####################
+###################
 # I2C Constraints #
-####################
+###################
 
 set_property PACKAGE_PIN AV18 [get_ports scl]
-set_property PACKAGE_PIN AW18 [get_portbs sda]
+set_property PACKAGE_PIN AW18 [get_ports sda]
 set_property IOSTANDARD LVCMOS33 [get_ports scl]
 set_property IOSTANDARD LVCMOS33 [get_ports sda]
 
-####################
+######################
 # Timing Constraints #
-####################
+######################
 
 set_property PACKAGE_PIN AA37 [get_ports timingRefClkN]
 set_property PACKAGE_PIN AA36 [get_ports timingRefClkP]
