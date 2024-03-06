@@ -190,17 +190,17 @@ architecture rtl of hsd_6400m is
   
   constant NUM_AXI_MASTERS_C : integer := 10;
   constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(NUM_AXI_MASTERS_C-1 downto 0) := (
-    MMCM_INDEX_C      => (
-      baseAddr        => x"00208800",
-      addrBits        => 11,
+    CHIP_INDEX_C      => (
+      baseAddr        => x"00200000",
+      addrBits        => 15,
       connectivity    => x"FFFF"),
     JESD_INDEX_C      => (
       baseAddr        => x"00208000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
-    CHIP_INDEX_C      => (
-      baseAddr        => x"00200000",
-      addrBits        => 15,
+    MMCM_INDEX_C      => (
+      baseAddr        => x"00208800",
+      addrBits        => 11,
       connectivity    => x"FFFF"),
     PGP_INDEX_C       => (
       baseAddr        => x"00210000",
@@ -236,7 +236,7 @@ architecture rtl of hsd_6400m is
   signal mAxilReadMasters  : AxiLiteReadMasterArray (NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilReadSlaves   : AxiLiteReadSlaveArray  (NUM_AXI_MASTERS_C-1 downto 0);
 
-  constant PGP_AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(7 downto 0) := genAxiLiteConfig( 8, x"00090000", 15, 12 );
+  constant PGP_AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(7 downto 0) := genAxiLiteConfig( 8, AXI_CROSSBAR_MASTERS_CONFIG_C(PGP_INDEX_C).baseAddr, 15, 12 );
 
   signal mPgpAxilWriteMasters : AxiLiteWriteMasterArray(7 downto 0);
   signal mPgpAxilWriteSlaves  : AxiLiteWriteSlaveArray (7 downto 0);
@@ -611,7 +611,7 @@ begin  -- rtl
     generic map (
       DEC_ERROR_RESP_G   => AXI_RESP_OK_C,
       NUM_SLAVE_SLOTS_G  => 1,
-      NUM_MASTER_SLOTS_G => NUM_AXI_MASTERS_C,
+      NUM_MASTER_SLOTS_G => AXI_CROSSBAR_MASTERS_CONFIG_C'length,
       MASTERS_CONFIG_G   => AXI_CROSSBAR_MASTERS_CONFIG_C)
     port map (
       axiClk           => regClk,
