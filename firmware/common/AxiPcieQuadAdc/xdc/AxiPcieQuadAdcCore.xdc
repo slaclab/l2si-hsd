@@ -31,21 +31,6 @@ create_generated_clock -name axilClk [get_pins U_Core/U_Clk/MmcmGen.U_Mmcm/CLKOU
 set_clock_groups -asynchronous \
 		 -group [get_clocks pciClk] \
 		 -group [get_clocks axilClk]
-#set_clock_groups -asynchronous -group [get_clocks evrClk] -group [get_clocks timingFbClk]
-
-#set_property LOC PCIE_3_1_X0Y0 [get_cells U_Core/U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst]
-#set_property PACKAGE_PIN AP28 [get_ports pciRstL]
-#set_property IOSTANDARD LVCMOS18 [get_ports pciRstL]
-#set_property PULLUP true [get_ports pciRstL]
-#set_false_path -from [get_ports pciRstL]
-
-#create_pblock PCIE_PHY_GRP
-#add_cells_to_pblock [get_pblocks PCIE_PHY_GRP] [get_cells -quiet [list U_Core/U_AxiPciePhy/U_AxiPcie]]
-#resize_pblock [get_pblocks PCIE_PHY_GRP] -add {CLOCKREGION_X3Y0:CLOCKREGION_X3Y1}
-
-#  Dissolve the timing constraint between adr_p and the MMCM outputs
-#    The MMCM clkout1 is creating an impossible constraint on the channel a pins IDELAY to ISERDES
-#set_false_path -to [get_pins {U_APP/U_FMC/ev10aq190_quad_phy_inst/serdes_mmcm_inst/MMCME3_ADV/CLKIN1}]
 
 
 

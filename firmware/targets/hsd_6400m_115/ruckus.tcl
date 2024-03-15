@@ -8,6 +8,8 @@ source $::env(RUCKUS_DIR)/vivado_proc.tcl
 
 # Load submodules' code and constraints
 loadRuckusTcl "$::DIR_PATH/../../submodules"
+loadRuckusTcl "$::DIR_PATH/../../submodules/axi-pcie-core/hardware/AbacoPc821"
+loadRuckusTcl "$::DIR_PATH/../../submodules/axi-pcie-core/shared"
 loadRuckusTcl "$::DIR_PATH/../../common"
 loadRuckusTcl "$::DIR_PATH/../../common/v3"
 loadRuckusTcl "$::DIR_PATH/../../common/jesd204b"
@@ -19,3 +21,4 @@ loadSource      -dir  "$::DIR_PATH/hdl/"
 loadConstraints -dir  "$::DIR_PATH/hdl/"
 loadConstraints -dir  "$::DIR_PATH/../../common/core/xdc/"
 loadConstraints -dir  "$::DIR_PATH/../../common/AxiPcieQuadAdc/xdc/"
+loadConstraints -dir  "$::DIR_PATH/../../submodules/axi-pcie-core/hardware/AbacoPc821/xdc/"

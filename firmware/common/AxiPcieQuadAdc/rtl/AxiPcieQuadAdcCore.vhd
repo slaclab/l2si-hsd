@@ -5,7 +5,7 @@
 -- Author     : Larry Ruckman  <ruckman@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-02-12
--- Last update: 2024-02-28
+-- Last update: 2024-03-15
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -111,9 +111,9 @@ end AxiPcieQuadAdcCore;
 architecture mapping of AxiPcieQuadAdcCore is
 
   signal regReadMaster  : AxiLiteReadMasterType;
-  signal regReadSlave   : AxiLiteReadSlaveType;
+  signal regReadSlave   : AxiLiteReadSlaveType := AXI_LITE_READ_SLAVE_EMPTY_SLVERR_C;
   signal regWriteMaster : AxiLiteWriteMasterType;
-  signal regWriteSlave  : AxiLiteWriteSlaveType;
+  signal regWriteSlave  : AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_EMPTY_SLVERR_C;
 
   constant I2C_INDEX_C : integer := 0;
   constant GTH_INDEX_C : integer := 1;
@@ -140,30 +140,30 @@ architecture mapping of AxiPcieQuadAdcCore is
          connectivity => x"FFFF"));
         
   signal axilReadMasters  : AxiLiteReadMasterArray (NAXI_C-1 downto 0);
-  signal axilReadSlaves   : AxiLiteReadSlaveArray  (NAXI_C-1 downto 0);
+  signal axilReadSlaves   : AxiLiteReadSlaveArray  (NAXI_C-1 downto 0) := (others=>AXI_LITE_READ_SLAVE_EMPTY_SLVERR_C);
   signal axilWriteMasters : AxiLiteWriteMasterArray(NAXI_C-1 downto 0);
-  signal axilWriteSlaves  : AxiLiteWriteSlaveArray (NAXI_C-1 downto 0);
+  signal axilWriteSlaves  : AxiLiteWriteSlaveArray (NAXI_C-1 downto 0) := (others=>AXI_LITE_WRITE_SLAVE_EMPTY_SLVERR_C);
   
   signal i2cReadMaster  : AxiLiteReadMasterType;
-  signal i2cReadSlave   : AxiLiteReadSlaveType;
+  signal i2cReadSlave   : AxiLiteReadSlaveType := AXI_LITE_READ_SLAVE_EMPTY_SLVERR_C;
   signal i2cWriteMaster : AxiLiteWriteMasterType;
-  signal i2cWriteSlave  : AxiLiteWriteSlaveType;
+  signal i2cWriteSlave  : AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_EMPTY_SLVERR_C;
 
   -- I2C axi-lite proxy
   signal intReadMasters  : AxiLiteReadMasterArray (3 downto 0);
-  signal intReadSlaves   : AxiLiteReadSlaveArray  (3 downto 0);
+  signal intReadSlaves   : AxiLiteReadSlaveArray  (3 downto 0) := (others=>AXI_LITE_READ_SLAVE_EMPTY_SLVERR_C);
   signal intWriteMasters : AxiLiteWriteMasterArray(3 downto 0);
-  signal intWriteSlaves  : AxiLiteWriteSlaveArray (3 downto 0);
+  signal intWriteSlaves  : AxiLiteWriteSlaveArray (3 downto 0) := (others=>AXI_LITE_WRITE_SLAVE_EMPTY_SLVERR_C);
 
   signal gthReadMaster  : AxiLiteReadMasterType;
-  signal gthReadSlave   : AxiLiteReadSlaveType;
+  signal gthReadSlave   : AxiLiteReadSlaveType := AXI_LITE_READ_SLAVE_EMPTY_SLVERR_C;
   signal gthWriteMaster : AxiLiteWriteMasterType;
-  signal gthWriteSlave  : AxiLiteWriteSlaveType;
+  signal gthWriteSlave  : AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_EMPTY_SLVERR_C;
 
   signal timReadMaster  : AxiLiteReadMasterType;
-  signal timReadSlave   : AxiLiteReadSlaveType;
+  signal timReadSlave   : AxiLiteReadSlaveType := AXI_LITE_READ_SLAVE_EMPTY_SLVERR_C;
   signal timWriteMaster : AxiLiteWriteMasterType;
-  signal timWriteSlave  : AxiLiteWriteSlaveType;
+  signal timWriteSlave  : AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_EMPTY_SLVERR_C;
 
   signal timingClk      : sl;
   signal timingClkRst   : sl;
@@ -369,8 +369,8 @@ begin
     generic map ( NUM_SLAVE_SLOTS_G  => 2,
                   NUM_MASTER_SLOTS_G => 2,
                   MASTERS_CONFIG_G   => genAxiLiteConfig(2, AXIL_XBAR_CONFIG_C(I2C_INDEX_C).baseAddr, 16, 15) )
-    port map ( axiClk              => axiClk,
-               axiClkRst           => axiRst,
+    port map ( axiClk              => axilClk,
+               axiClkRst           => axilRst,
                sAxiReadMasters     => intReadMasters (3 downto 2),
                sAxiReadSlaves      => intReadSlaves  (3 downto 2),
                sAxiWriteMasters    => intWriteMasters(3 downto 2),
@@ -381,8 +381,8 @@ begin
                mAxiWriteSlaves     => intWriteSlaves (1 downto 0) );
 
   U_I2CProxy : entity surf.AxiLiteMasterProxy
-    port map ( axiClk          => axiClk,
-               axiRst          => axiRst,
+    port map ( axiClk          => axilClk,
+               axiRst          => axilRst,
                sAxiReadMaster  => intReadMasters (1),
                sAxiReadSlave   => intReadSlaves  (1),
                sAxiWriteMaster => intWriteMasters(1),
@@ -401,22 +401,13 @@ begin
                axiReadSlave   => intReadSlaves  (0),
                axiWriteMaster => intWriteMasters(0),
                axiWriteSlave  => intWriteSlaves (0),
-               axiClk         => axiClk,
-               axiRst         => axiRst );
+               axiClk         => axilClk,
+               axiRst         => axilRst );
 
-  U_AXIL_ASYNC : entity surf.AxiLiteAsync
-    port map ( sAxiClk         => axiClk,
-               sAxiClkRst      => axiRst,
-               sAxiReadMaster  => axilReadMasters (APP_INDEX_C),
-               sAxiReadSlave   => axilReadSlaves  (APP_INDEX_C),
-               sAxiWriteMaster => axilWriteMasters(APP_INDEX_C),
-               sAxiWriteSlave  => axilWriteSlaves (APP_INDEX_C),
-               mAxiClk         => axilClk,
-               mAxiClkRst      => axilRst,
-               mAxiReadMaster  => appReadMaster,
-               mAxiReadSlave   => appReadSlave,
-               mAxiWriteMaster => appWriteMaster,
-               mAxiWriteSlave  => appWriteSlave );
+  appReadMaster  <= axilReadMasters (APP_INDEX_C);
+  appWriteMaster <= axilWriteMasters(APP_INDEX_C);
+  axilReadSlaves  (APP_INDEX_C) <= appReadSlave;
+  axilWriteSlaves (APP_INDEX_C) <= appWriteSlave;
 
 end mapping;
 

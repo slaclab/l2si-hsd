@@ -190,44 +190,44 @@ architecture rtl of hsd_6400m_115 is
   
   constant NUM_AXI_MASTERS_C : integer := 10;
   constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(NUM_AXI_MASTERS_C-1 downto 0) := (
-    MMCM_INDEX_C      => (
-      baseAddr        => x"00088800",
-      addrBits        => 11,
-      connectivity    => x"FFFF"),
-    JESD_INDEX_C      => (
-      baseAddr        => x"00088000",
-      addrBits        => 11,
-      connectivity    => x"FFFF"),
     CHIP_INDEX_C      => (
-      baseAddr        => x"00080000",
+      baseAddr        => x"00200000",
       addrBits        => 15,
       connectivity    => x"FFFF"),
+    JESD_INDEX_C      => (
+      baseAddr        => x"00208000",
+      addrBits        => 11,
+      connectivity    => x"FFFF"),
+    MMCM_INDEX_C      => (
+      baseAddr        => x"00208800",
+      addrBits        => 11,
+      connectivity    => x"FFFF"),
     PGP_INDEX_C       => (
-      baseAddr        => x"00090000",
+      baseAddr        => x"00210000",
       addrBits        => 15,
       connectivity    => x"FFFF"),
     EXT_INDEX_C       => (
-      baseAddr        => x"00098000",
+      baseAddr        => x"00218000",
       addrBits        => 12,
       connectivity    => x"FFFF"),
     QSFP_INDEX_C+0    => (
-      baseAddr        => x"00099000",
+      baseAddr        => x"00219000",
       addrBits        => 12,
       connectivity    => x"FFFF"),
     QSFP_INDEX_C+1    => (
-      baseAddr        => x"0009A000",
+      baseAddr        => x"0021A000",
       addrBits        => 12,
       connectivity    => x"FFFF"),
     SURF_JESD_INDEX_C+0 => (
-      baseAddr        => x"0009B000",
+      baseAddr        => x"0021B000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     SURF_JESD_INDEX_C+1 => (
-      baseAddr        => x"0009B800",
+      baseAddr        => x"0021B800",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     TEM_INDEX_C       => (
-      baseAddr        => x"000A0000",
+      baseAddr        => x"00220000",
       addrBits        => 16,
       connectivity    => x"FFFF") );
 
@@ -236,7 +236,7 @@ architecture rtl of hsd_6400m_115 is
   signal mAxilReadMasters  : AxiLiteReadMasterArray (NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilReadSlaves   : AxiLiteReadSlaveArray  (NUM_AXI_MASTERS_C-1 downto 0);
 
-  constant PGP_AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(7 downto 0) := genAxiLiteConfig( 8, x"00090000", 15, 12 );
+  constant PGP_AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(7 downto 0) := genAxiLiteConfig( 8, AXI_CROSSBAR_MASTERS_CONFIG_C(PGP_INDEX_C).baseAddr, 15, 12 );
 
   signal mPgpAxilWriteMasters : AxiLiteWriteMasterArray(7 downto 0);
   signal mPgpAxilWriteSlaves  : AxiLiteWriteSlaveArray (7 downto 0);
@@ -258,6 +258,7 @@ architecture rtl of hsd_6400m_115 is
     pgpTxRst  : sl;
     pgpRxRst  : sl;
     pgpHoldoffSof : sl;
+    pgpDisableFull : slv(1 downto 0);
     txId      : slv(15 downto 0);
   end record;
   constant REG_INIT_C : RegType := (
@@ -272,6 +273,7 @@ architecture rtl of hsd_6400m_115 is
     pgpTxRst  => '0',
     pgpRxRst  => '0',
     pgpHoldoffSof  => '0',
+    pgpDisableFull  => "00",
     txId      => (others=>'0') );
 
   signal r    : RegType := REG_INIT_C;
@@ -349,15 +351,14 @@ architecture rtl of hsd_6400m_115 is
   signal adcORCnt   : SlVectorArray(9 downto 0, 27 downto 0);
   
   -- PCIE DMA unused
-  constant DMA_AXIS_CONFIG_C : AxiStreamConfigArray(3 downto 0) := (
-    others=> (
-     TSTRB_EN_C    => false,
-     TDATA_BYTES_C => 32,
-     TDEST_BITS_C  => 0,
-     TID_BITS_C    => 0,
-     TKEEP_MODE_C  => TKEEP_NORMAL_C,
-     TUSER_BITS_C  => 0,
-     TUSER_MODE_C  => TUSER_NORMAL_C ));
+  constant DMA_AXIS_CONFIG_C : AxiStreamConfigType := (
+    TSTRB_EN_C    => false,
+    TDATA_BYTES_C => 32,
+    TDEST_BITS_C  => 0,
+    TID_BITS_C    => 0,
+    TKEEP_MODE_C  => TKEEP_NORMAL_C,
+    TUSER_BITS_C  => 0,
+    TUSER_MODE_C  => TUSER_NORMAL_C );
 
   signal phaseValue           : Slv16Array(1 downto 0);
   signal phaseCount           : Slv16Array(1 downto 0);
@@ -609,7 +610,7 @@ begin  -- rtl
     generic map (
       DEC_ERROR_RESP_G   => AXI_RESP_OK_C,
       NUM_SLAVE_SLOTS_G  => 1,
-      NUM_MASTER_SLOTS_G => NUM_AXI_MASTERS_C,
+      NUM_MASTER_SLOTS_G => AXI_CROSSBAR_MASTERS_CONFIG_C'length,
       MASTERS_CONFIG_G   => AXI_CROSSBAR_MASTERS_CONFIG_C)
     port map (
       axiClk           => regClk,
@@ -899,7 +900,7 @@ begin  -- rtl
 
   U_PGP_ILV : entity work.AxiStreamInterleave
     generic map ( LANES_G        => 4,
-                  SAXIS_CONFIG_G => DMA_AXIS_CONFIG_C(0),
+                  SAXIS_CONFIG_G => DMA_AXIS_CONFIG_C,
                   MAXIS_CONFIG_G => PGP3_AXIS_CONFIG_C )
     port map ( axisClk     => dmaClk,
                axisRst     => dmaRst     (0),
@@ -910,7 +911,7 @@ begin  -- rtl
 
   U_PGP2_ILV : entity work.AxiStreamInterleave
     generic map ( LANES_G        => 4,
-                  SAXIS_CONFIG_G => DMA_AXIS_CONFIG_C(0),
+                  SAXIS_CONFIG_G => DMA_AXIS_CONFIG_C,
                   MAXIS_CONFIG_G => PGP3_AXIS_CONFIG_C )
     port map ( axisClk     => dmaClk,
                axisRst     => dmaRst     (1),
@@ -968,6 +969,7 @@ begin  -- rtl
                  axilWriteMaster => mPgpAxilWriteMasters(i),
                  axilWriteSlave  => mPgpAxilWriteSlaves (i),
                  holdoffSof      => r.pgpHoldoffSof,
+                 disableFull     => r.pgpDisableFull(i/4),
                  --
                  --  App Interface
                  ibRst           => dmaRst(i/4),
@@ -1063,6 +1065,7 @@ begin  -- rtl
     axiSlaveRegister ( ep, toSlv(4,12),  5, v.pgpTxRst);
     axiSlaveRegister ( ep, toSlv(4,12),  6, v.pgpRxRst);
     axiSlaveRegister ( ep, toSlv(4,12),  7, v.pgpHoldoffSof);
+    axiSlaveRegister ( ep, toSlv(4,12),  8, v.pgpDisableFull);
 
     for i in 0 to NUM_MON_CLKS-1 loop
       axiSlaveRegisterR( ep, toSlv(4*i+8,12), 0, monClkRate(i)(28 downto 0));

@@ -351,15 +351,14 @@ architecture rtl of hsd_6400m is
   signal adcORCnt   : SlVectorArray(9 downto 0, 27 downto 0);
   
   -- PCIE DMA unused
-  constant DMA_AXIS_CONFIG_C : AxiStreamConfigArray(3 downto 0) := (
-    others=> (
-     TSTRB_EN_C    => false,
-     TDATA_BYTES_C => 32,
-     TDEST_BITS_C  => 0,
-     TID_BITS_C    => 0,
-     TKEEP_MODE_C  => TKEEP_NORMAL_C,
-     TUSER_BITS_C  => 0,
-     TUSER_MODE_C  => TUSER_NORMAL_C ));
+  constant DMA_AXIS_CONFIG_C : AxiStreamConfigType := (
+    TSTRB_EN_C    => false,
+    TDATA_BYTES_C => 32,
+    TDEST_BITS_C  => 0,
+    TID_BITS_C    => 0,
+    TKEEP_MODE_C  => TKEEP_NORMAL_C,
+    TUSER_BITS_C  => 0,
+    TUSER_MODE_C  => TUSER_NORMAL_C );
 
   signal phaseValue           : Slv16Array(1 downto 0);
   signal phaseCount           : Slv16Array(1 downto 0);
@@ -533,7 +532,7 @@ begin  -- rtl
     generic map ( AXI_APP_BUS_EN_G => true,
                   ENABLE_DMA_G     => false,
                   BUILD_INFO_G     => BUILD_INFO_G,
-                  AXIS_CONFIG_G    => DMA_AXIS_CONFIG_C(0),
+                  AXIS_CONFIG_G    => DMA_AXIS_CONFIG_C,
                   LCLSII_G         => LCLSII_C )
     port map ( sysClk         => sysClk,
                sysRst         => sysRst,
@@ -901,7 +900,7 @@ begin  -- rtl
 
   U_PGP_ILV : entity work.AxiStreamInterleave
     generic map ( LANES_G        => 4,
-                  SAXIS_CONFIG_G => DMA_AXIS_CONFIG_C(0),
+                  SAXIS_CONFIG_G => DMA_AXIS_CONFIG_C,
                   MAXIS_CONFIG_G => PGP3_AXIS_CONFIG_C )
     port map ( axisClk     => dmaClk,
                axisRst     => dmaRst     (0),
@@ -912,7 +911,7 @@ begin  -- rtl
 
   U_PGP2_ILV : entity work.AxiStreamInterleave
     generic map ( LANES_G        => 4,
-                  SAXIS_CONFIG_G => DMA_AXIS_CONFIG_C(0),
+                  SAXIS_CONFIG_G => DMA_AXIS_CONFIG_C,
                   MAXIS_CONFIG_G => PGP3_AXIS_CONFIG_C )
     port map ( axisClk     => dmaClk,
                axisRst     => dmaRst     (1),
