@@ -291,7 +291,8 @@ begin
     generic map (
       EXTREF_G          => true,  -- because Si5338 can't generate 371MHz
       ADDR_BITS_G       => 14,
-      AXIL_BASE_ADDR_G  => AXIL_XBAR_CONFIG_C(GTH_INDEX_C).baseAddr )
+      AXIL_BASE_ADDR_G  => AXIL_XBAR_CONFIG_C(GTH_INDEX_C).baseAddr,
+      GTH_DRP_OFFSET_G  => x"00004000" )
     port map (
       axilClk         => axilClk,
       axilRst         => axilRst,
