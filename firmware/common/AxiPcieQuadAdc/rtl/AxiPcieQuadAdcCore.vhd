@@ -118,8 +118,9 @@ architecture mapping of AxiPcieQuadAdcCore is
   constant I2C_INDEX_C : integer := 0;
   constant GTH_INDEX_C : integer := 1;
   constant TIM_INDEX_C : integer := 2;
-  constant APP_INDEX_C : integer := 3;
-  constant NAXI_C : integer := 4;
+  constant XPM_INDEX_C : integer := 3;
+  constant APP_INDEX_C : integer := 4;
+  constant NAXI_C : integer := 5;
 
   constant AXIL_XBAR_CONFIG_C : AxiLiteCrossbarMasterConfigArray(NAXI_C-1 downto 0) := (
       I2C_INDEX_C     => (
@@ -132,6 +133,10 @@ architecture mapping of AxiPcieQuadAdcCore is
          connectivity => x"FFFF"),
       TIM_INDEX_C     => (
          baseAddr     => x"0014_0000",
+         addrBits     => 18,
+         connectivity => x"FFFF"),
+      XPM_INDEX_C     => (
+         baseAddr     => x"0018_0000",
          addrBits     => 18,
          connectivity => x"FFFF"),
       APP_INDEX_C     => (
@@ -197,7 +202,9 @@ architecture mapping of AxiPcieQuadAdcCore is
   signal flash_data_dts : slv(3 downto 0);
   signal flash_nce : sl;
 
-  signal timingSimClk : sl;
+  signal timingFbRx   : TimingRxType := TIMING_RX_INIT_C;
+  signal timingFwd    : TimingPhyType;
+  signal timingOut    : TimingPhyType;
   
 begin
 
@@ -322,8 +329,8 @@ begin
       txStatus        => txStatus,
       txUsrClk        => txUsrClk,
       txUsrClkActive  => '1',
-      txData          => timingFb.data,
-      txDataK         => timingFb.dataK,
+      txData          => timingOut.data,
+      txDataK         => timingOut.dataK,
       txOutClk        => txUsrClk,
       loopback        => loopback);
   
@@ -334,7 +341,7 @@ begin
       ASYNC_G           => false,
       CLKSEL_MODE_G     => "LCLSII",
       AXIL_BASE_ADDR_G  => AXIL_XBAR_CONFIG_C(TIM_INDEX_C).baseAddr,
-      USE_TPGMINI_G     => true )
+      USE_TPGMINI_G     => false )
     port map (
       gtTxUsrClk      => txUsrClk,
       gtTxUsrRst      => txUsrRst,
@@ -357,6 +364,28 @@ begin
       axilWriteMaster => axilWriteMasters(TIM_INDEX_C),
       axilWriteSlave  => axilWriteSlaves (TIM_INDEX_C));
 
+  timingFbRx.data  <= timingFb.data;
+  timingFbRx.dataK <= timingFb.dataK;
+  
+  U_XpmMini : entity l2si_core.XpmMiniWrapper
+    generic map ( AXIL_BASEADDR_G => AXIL_XBAR_CONFIG_C(XPM_INDEX_C).baseAddr )
+    port map (
+      timingClk  => txUsrClk,
+      timingRst  => txUsrRst,
+      dsTx   (0) => timingFwd,
+
+      dsRxClk(0) => txUsrClk,
+      dsRxRst(0) => txUsrRst,
+      dsRx   (0) => timingFbRx,
+
+      axilClk         => axilClk,
+      axilRst         => axilRst,
+      axilReadMaster  => axilReadMasters (XPM_INDEX_C),
+      axilReadSlave   => axilReadSlaves  (XPM_INDEX_C),
+      axilWriteMaster => axilWriteMasters(XPM_INDEX_C),
+      axilWriteSlave  => axilWriteSlaves (XPM_INDEX_C) );
+
+  timingOut   <= timingFb when loopback="000" else timingFwd;
   timingBus   <= intTimingBus;
   timingFbClk <= txUsrClk;
   timingFbRst <= txUsrRst;
