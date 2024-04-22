@@ -397,8 +397,8 @@ begin
       axiWriteMaster => flsWriteMaster,
       axiWriteSlave  => flsWriteSlave,
       -- Clocks and Resets
-      axiClk         => axilClk,
-      axiRst         => axilRst);
+      axiClk         => sysClock,
+      axiRst         => sysReset);
 
   ---------------
   -- AXI PCIe DMA
