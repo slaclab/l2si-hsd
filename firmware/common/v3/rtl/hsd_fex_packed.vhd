@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2021-07-09
+-- Last update: 2024-04-24
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -391,7 +391,7 @@ begin
     variable flush  : sl;
     variable skip   : sl;
     variable q      : AxisRegType;
-    variable addr   : slv(CACHE_ADDR_LEN_C-1 downto 0);
+    variable pload  : integer;
   begin
     v := r;
     
@@ -580,9 +580,10 @@ begin
               --
               q.first := '1';
               q.axisMaster.tValid := '1';
-              q.axisMaster.tData(29 downto 0) :=
-                toSlv(ILV_G*(ROW_SIZE*r.cache(i).drows+r.cache(i).didxs),30);
-              
+              pload := r.cache(i).didxs;
+              pload := pload + ROW_SIZE*r.cache(i).drows;
+              pload := pload*ILV_G;
+              q.axisMaster.tData(29 downto 0) := toSlv(pload,30);
               q.axisMaster.tData(30) := not r.cache(i).valid;
               q.axisMaster.tData(31) := r.cache(i).ovflow;
               q.axisMaster.tData( 47 downto  32) := toSlv(0,16);         -- boff,eoff

@@ -144,8 +144,9 @@ package QuadAdcPkg is
     baddr  : slv(CACHE_ADDR_LEN_C-1 downto 0);
     eaddr  : slv(CACHE_ADDR_LEN_C-1 downto 0);
     tag    : slv(4 downto 0);
-    drows  : integer range 0 to RAM_DEPTH_C-1;
-    didxs  : integer range 1-ROW_SIZE to ROW_SIZE-1;
+    drows  : integer range 0 to ROW_SIZE*RAM_DEPTH_C-1;
+--    didxs  : integer range 1-ROW_SIZE to ROW_SIZE-1;
+    didxs  : integer range 1-ROW_SIZE*RAM_DEPTH_C to ROW_SIZE*RAM_DEPTH_C-1;
     valid  : sl;
     skip   : sl;
     ovflow : sl;
