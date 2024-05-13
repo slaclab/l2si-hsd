@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2022-01-07
+-- Last update: 2024-04-24
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -213,7 +213,8 @@ begin
                  eventAxisMaster     => eventAxisMasters   (i),
                  eventAxisSlave      => eventAxisSlaves    (i),
                  eventAxisCtrl       => eventAxisCtrl      (i),
-                 clearReadout        => clearReadout       (i),
+                 --clearReadout        => clearReadout       (i),
+                 clearReadout        => '0',  -- causes dmaRst to be asserted
                  --
                  fbPllRst            => ifbPllRst    (i),
                  fbPhyRst            => ifbPhyRst    (i),

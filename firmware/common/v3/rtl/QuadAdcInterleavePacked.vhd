@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2024-01-12
+-- Last update: 2024-04-24
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -556,6 +556,7 @@ begin  -- mapping
         elsif r.fexRaw(i)='1' then
           v.start      (i) := '1';
           v.skip       (i) := not l0raw;
+          v.fexPreCount(i) := (others=>'0');
         else
           v.fexPreCount(i) := (others=>'0');
         end if;
@@ -586,7 +587,8 @@ begin  -- mapping
     
     -- almost full interface
     for i in 0 to NSTREAMS_C-1 loop
-      if (r.fexEnable(i) = '1' and
+      if ((r.fexEnable(i) = '1' or
+           r.fexRaw   (i) = '1') and
           (free (i) < r.aFull (i) or
            nfree(i) < r.aFullN(i))) then
         v.almost_full(i) := '1';

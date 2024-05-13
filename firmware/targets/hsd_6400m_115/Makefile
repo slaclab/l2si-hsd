@@ -1,5 +1,6 @@
 export GIT_BYPASS = 1
 export REMOVE_UNUSED_CODE = 1
+export OVERRIDE_SUBMODULE_LOCKS = 1
 export TIMING_EXT_PKG = 1
 
 # Define target output
@@ -22,7 +23,7 @@ target: prom
 # PRJ_VERSION = 0000000C  Add l2si-core trigfifo-fix
 # PRJ_VERSION = 0000000D  Remove data dump preventing long gate delays or widths
 #
-export PRJ_VERSION = 0000000D
+#export PRJ_VERSION = 0000000D
 
 # Define target part
 export PRJ_PART = XCKU115-FLVB1760-2-E
@@ -34,4 +35,5 @@ export PRJ_FMC = 134
 export TOP_DIR = $(abspath $(PWD)/../..)
 
 # Use top level makefile
+include ../shared_config.mk
 include $(TOP_DIR)/submodules/ruckus/system_vivado.mk
