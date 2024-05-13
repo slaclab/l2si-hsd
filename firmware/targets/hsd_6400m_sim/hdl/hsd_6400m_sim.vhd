@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2024-04-23
+-- Last update: 2024-04-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -175,7 +175,7 @@ architecture top_level_app of hsd_6400m_sim is
      ( addr => x"00001218", value => x"0000080E" ), -- fexLen/delay
      ( addr => x"00001220", value => x"00000001" ), -- almostFull
      ( addr => x"00001228", value => x"00000002" ), -- prescale
-     ( addr => x"00001000", value => x"00000001" ), -- fexEnable
+     ( addr => x"00001000", value => x"00010000" ), -- fexEnable
      -- Chip Adc Reg
      ( addr => x"00000010", value => x"C0000000" ), -- enable
      -- XpmMessageAligner
@@ -191,7 +191,7 @@ architecture top_level_app of hsd_6400m_sim is
    signal tpgStream    : TimingSerialType;
    signal tpgAdvance   : sl;
    signal tpgFiducial  : sl;
-   signal xpmConfig    : XpmMiniConfigType := XPM_MINI_CONFIG_INIT_C;
+   signal xpmConfig    : XpmConfigType := XPM_CONFIG_INIT_C;
    signal xpmStream    : XpmStreamType := XPM_STREAM_INIT_C;
    signal timingStream : XpmStreamType := XPM_STREAM_INIT_C;
 
@@ -216,17 +216,35 @@ begin
                                   toSlv(4,20),
                                   toSlv(2,20),
                                   toSlv(1,20));
+  process is
+  begin
+    --  Need the full Xpm simulation for L0Raw
+    xpmConfig.partition(0).master <= '1';
+    xpmConfig.partition(0).l0Select.enabled <= '0';
+    xpmConfig.partition(0).l0Select.rateSel <= x"0000";
+    xpmConfig.partition(0).l0Select.destSel <= x"8000";
+    xpmConfig.partition(0).l0Select.groups <= x"01";
+    xpmConfig.partition(0).l0Select.rawPeriod <= x"0000A";
+--  xpmConfig.partition(0).pipeline.depth_fids <= toSlv(90,8);
+--  xpmConfig.partition(0).pipeline.depth_clks <= toSlv(90*200,16);
+    xpmConfig.partition(0).pipeline.depth_fids <= toSlv(10,8);
+    xpmConfig.partition(0).pipeline.depth_clks <= toSlv(10*200,16);
 
-  xpmConfig.partition.l0Select.enabled <= '1';
-  xpmConfig.partition.l0Select.rateSel <= x"0000";
-  xpmConfig.partition.l0Select.destSel <= x"8000";
-  xpmConfig.partition.pipeline.depth_fids <= toSlv(90,8);
-  xpmConfig.partition.pipeline.depth_clks <= toSlv(90*200,16);
---  xpmConfig.partition.pipeline.depth_fids <= toSlv(10,8);
---  xpmConfig.partition.pipeline.depth_clks <= toSlv(10*200,16);
+    xpmConfig.dsLink(0).enable    <= '1';
 
-  xpmConfig.dsLink(0).enable    <= '1';
-  
+    wait for 20 us;
+
+    xpmConfig.partition(0).message.header <= '0' & MSG_CLEAR_FIFO;
+    xpmConfig.partition(0).message.insert <= '1';
+    wait for 10 ns;
+    xpmConfig.partition(0).message.insert <= '0';
+
+    wait for 10 us;
+    xpmConfig.partition(0).l0Select.enabled <= '1';
+    
+    wait;
+  end process;
+      
   dmaData <= dmaIbMaster(0).tData(dmaData'range);
   dmaUser <= dmaIbMaster(0).tUser(dmaUser'range);
 
@@ -286,11 +304,6 @@ begin
    recTimingClk <= refTimingClk;
    xData.data   <= dsTx(0).data;
    xData.dataK  <= dsTx(0).dataK;
-   dsRxClk      <= (others=>recTimingClk);
-   dsRxRst      <= (others=>refTimingRst);
-   dsRx(0).data <= timingFb.data;
-   dsRx(0).dataK<= timingFb.dataK;
-  
 
    -- simulate timing (TPG -> XPM -> HSD)
    U_UsSim : entity lcls_timing_core.TPGMini
@@ -310,24 +323,38 @@ begin
    xpmStream.advance(0) <= tpgAdvance;
    xpmStream.streams(0) <= tpgStream;
 
-   U_Application : entity l2si_core.XpmMini
+   U_Application : entity l2si_core.XpmApp
      generic map (
-       NUM_DS_LINKS_G  => XPM_DS_LINKS_C )
+       NUM_DS_LINKS_G  => 1,
+       NUM_BP_LINKS_G  => 1)
      port map (
        regclk          => regClk,
        regrst          => regRst,
-       update          => '1',
+       update          => (others=>'1'),
        status          => open,
        config          => xpmConfig,
+       axilReadMaster  => AXI_LITE_READ_MASTER_INIT_C,
+       axilWriteMaster => AXI_LITE_WRITE_MASTER_INIT_C,
+       obAppSlave      => AXI_STREAM_SLAVE_INIT_C,
        -- DS Ports
-       dsRxClk         => dsRxClk,
-       dsRxRst         => dsRxRst,
-       dsRx            => dsRx,
-       dsTx            => dsTx,
+       dsLinkStatus(0) => XPM_LINK_STATUS_INIT_C,
+       dsRxData    (0) => timingFb.data,
+       dsRxDataK   (0) => timingFb.dataK,
+       dsTxData    (0) => dsTx(0).data,
+       dsTxDataK   (0) => dsTx(0).dataK,
+       dsRxErr     (0) => '0',
+       dsRxClk     (0) => recTimingClk,
+       dsRxRst     (0) => recTimingRst,
+       --
+       bpStatus        => (others=>XPM_BP_LINK_STATUS_INIT_C),
+       bpRxLinkPause   => (others=>x"0000"),
        -- Timing Interface (timingClk domain) 
        timingClk       => refTimingClk,
        timingRst       => refTimingRst,
-       timingStream    => xpmStream );
+       timingStream    => xpmStream,
+       timingFbClk     => refTimingClk,
+       timingFbRst     => '0',
+       timingFbId      => x"ABADCAFE" );
 
    comb : process ( r, refTimingRst, tpgFiducial, tpgStream ) is
      variable v : RegType;
