@@ -5,7 +5,7 @@ libincs_hsd134 := Module134.hh ModuleBase.hh TprCore.hh AxiVersion.h Event.hh Gl
 tgtnames := hsd_init
 tgtsrcs_hsd_init := hsd_init.cc
 tgtlibs_hsd_init := hsd134
-tgtslib_hsd_init := rt
+tgtslib_hsd_init := rt pthread
 
 tgtnames += hsd_reg
 tgtsrcs_hsd_reg := hsd_reg.cc Histogram.cc
