@@ -204,30 +204,30 @@ architecture rtl of hsd_6400m_115 is
       connectivity    => x"FFFF"),
     PGP_INDEX_C       => (
       baseAddr        => x"00210000",
-      addrBits        => 15,
+      addrBits        => 20,
       connectivity    => x"FFFF"),
     EXT_INDEX_C       => (
-      baseAddr        => x"00218000",
+      baseAddr        => x"00318000",
       addrBits        => 12,
       connectivity    => x"FFFF"),
     QSFP_INDEX_C+0    => (
-      baseAddr        => x"00219000",
+      baseAddr        => x"00319000",
       addrBits        => 12,
       connectivity    => x"FFFF"),
     QSFP_INDEX_C+1    => (
-      baseAddr        => x"0021A000",
+      baseAddr        => x"0031A000",
       addrBits        => 12,
       connectivity    => x"FFFF"),
     SURF_JESD_INDEX_C+0 => (
-      baseAddr        => x"0021B000",
+      baseAddr        => x"0031B000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     SURF_JESD_INDEX_C+1 => (
-      baseAddr        => x"0021B800",
+      baseAddr        => x"0031B800",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     TEM_INDEX_C       => (
-      baseAddr        => x"00220000",
+      baseAddr        => x"00320000",
       addrBits        => 16,
       connectivity    => x"FFFF") );
 
@@ -236,7 +236,40 @@ architecture rtl of hsd_6400m_115 is
   signal mAxilReadMasters  : AxiLiteReadMasterArray (NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilReadSlaves   : AxiLiteReadSlaveArray  (NUM_AXI_MASTERS_C-1 downto 0);
 
-  constant PGP_AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(7 downto 0) := genAxiLiteConfig( 8, AXI_CROSSBAR_MASTERS_CONFIG_C(PGP_INDEX_C).baseAddr, 15, 12 );
+  constant PGP_AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(7 downto 0) := (
+    0      => (
+      baseAddr        => x"00210000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    1      => (
+      baseAddr        => x"00220000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    2      => (
+      baseAddr        => x"00230000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    3       => (
+      baseAddr        => x"00240000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    4       => (
+      baseAddr        => x"00250000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    5    => (
+      baseAddr        => x"00260000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    6    => (
+      baseAddr        => x"00270000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    7 => (
+      baseAddr        => x"00280000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"));
+  --constant PGP_AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(7 downto 0) := genAxiLiteConfig( 8, AXI_CROSSBAR_MASTERS_CONFIG_C(PGP_INDEX_C).baseAddr, 19, 16 );
 
   signal mPgpAxilWriteMasters : AxiLiteWriteMasterArray(7 downto 0);
   signal mPgpAxilWriteSlaves  : AxiLiteWriteSlaveArray (7 downto 0);
