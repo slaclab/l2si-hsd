@@ -133,11 +133,11 @@ architecture rtl of hsd_6400m_115_solo is
   constant NUM_AXI_MASTERS_C : integer := 6;
   constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(NUM_AXI_MASTERS_C-1 downto 0) := (
     MMCM_INDEX_C      => (
-      baseAddr        => APP_ADDR_C+x"00008800",
+      baseAddr        => APP_ADDR_C+x"00020000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     JESD_INDEX_C      => (
-      baseAddr        => APP_ADDR_C+x"00008000",
+      baseAddr        => APP_ADDR_C+x"00010000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     CHIP_INDEX_C      => (
@@ -145,15 +145,15 @@ architecture rtl of hsd_6400m_115_solo is
       addrBits        => 15,
       connectivity    => x"FFFF"),
     EXT_INDEX_C       => (
-      baseAddr        => APP_ADDR_C+x"00018000",
+      baseAddr        => APP_ADDR_C+x"00040000",
       addrBits        => 12,
       connectivity    => x"FFFF"),
     SURF_JESD_INDEX_C+0 => (
-      baseAddr        => APP_ADDR_C+x"0001B000",
+      baseAddr        => APP_ADDR_C+x"00070000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     SURF_JESD_INDEX_C+1 => (
-      baseAddr        => APP_ADDR_C+x"0001B800",
+      baseAddr        => APP_ADDR_C+x"00080000",
       addrBits        => 11,
       connectivity    => x"FFFF") );
 
