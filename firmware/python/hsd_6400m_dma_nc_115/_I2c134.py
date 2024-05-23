@@ -57,15 +57,15 @@ class FmcCpld(object):
     def __init__(self,proxy,offset):
         self.proxy= proxy
         self.offset  = offset
-        self.command  = offset + 0x0
-        self.i2c_data0  = offset + 0x18
-        self.i2c_data1  = offset + 0x1C
-        self.i2c_data2  = offset + 0x20
-        self.i2c_data3  = offset + 0x24
-        self.i2c_read0  = offset + 0x28
-        self.i2c_read1  = offset + 0x2C
-        self.i2c_read2  = offset + 0x30
-        self.i2c_read3  = offset + 0x34
+        self.command  = 0x0
+        self.i2c_data0  = 0x6
+        self.i2c_data1  = 0x7
+        self.i2c_data2  = 0x8
+        self.i2c_data3  = 0x9
+        self.i2c_read0  = 0xA
+        self.i2c_read1  = 0xB
+        self.i2c_read2  = 0xC
+        self.i2c_read3  = 0xD
         # some constants
         self.ADC0= 1
         self.ADC1= 2
@@ -84,6 +84,17 @@ class FmcCpld(object):
         self.FMC134_ERR_ADC_INIT     = 1
         self.AdcCalibMode = ['NO_CAL', 'FG_CAL', 'BG_CAL']
 
+    def GET_REG(self,reg):
+        addr = self.offset + 4*(reg&0xff)
+        return self.proxy.readI2c(addr)&0xff
+
+    def SET_REG(self,reg,value):
+        t0 = self.GET_REG(reg)
+        addr = self.offset + 4*(reg&0xff)
+        self.proxy.writeI2c(addr,value&0xff)
+        t1 = self.GET_REG(reg)
+        print(f'Write [{reg}] {value} [{t0} -> {t1}]')
+
     def _writeRegister(self, dev, addr, val):
         data=0
         if dev==self.LMK:
@@ -99,15 +110,15 @@ class FmcCpld(object):
         else:
             data |= (addr&0x7fff) << 16
             data |= (val & 0xff) << 8
-        self.proxy.writeI2c(self.i2c_data0,data)
-        self.proxy.writeI2c(self.i2c_data1,data>>8)
-        self.proxy.writeI2c(self.i2c_data2,data>>16)
-        self.proxy.writeI2c(self.i2c_data3,data>>24)
-        self.proxy.writeI2c(self.command, dev)
+        self.proxy.writeI2c(self.offset + 4*self.i2c_data0,data&0xff)
+        self.proxy.writeI2c(self.offset + 4*self.i2c_data1,(data>>8)&0xff)
+        self.proxy.writeI2c(self.offset + 4*self.i2c_data2,(data>>16)&0xff)
+        self.proxy.writeI2c(self.offset + 4*self.i2c_data3,(data>>24)&0xff)
+        self.proxy.writeI2c(self.offset + 4*self.command, dev&0xff)
         time.sleep(0.01)
 
     def _read(self):
-        return ((self.proxy.readI2c(self.i2c_read0)&0xff)<< 0) | ((self.proxy.readI2c(self.i2c_read1)&0xff)<< 8) | ((self.proxy.readI2c(self.i2c_read2)&0xff)<<16) | ((self.proxy.readI2c(self.i2c_read3)&0xff)<<24) 
+        return ((self.proxy.readI2c(self.offset + 4*self.i2c_read0)&0xff)<< 0) | ((self.proxy.readI2c(self.offset + 4*self.i2c_read1)&0xff)<< 8) | ((self.proxy.readI2c(self.offset + 4*self.i2c_read2)&0xff)<<16) | ((self.proxy.readI2c(self.offset + 4*self.i2c_read3)&0xff)<<24) 
 
     def _readRegister(self, dev, addr):
         data=0
@@ -123,18 +134,18 @@ class FmcCpld(object):
         else:
             data |= (1<<31)
             data |= (addr&0x7fff) << 16
-        self.proxy.writeI2c(self.i2c_data0,data)
-        self.proxy.writeI2c(self.i2c_data1,data>>8)
-        self.proxy.writeI2c(self.i2c_data2,data>>16)
-        self.proxy.writeI2c(self.i2c_data3,data>>24)
-        self.proxy.writeI2c(self.command, dev)
+        self.proxy.writeI2c(self.offset + 4*self.i2c_data0,data&0xff)
+        self.proxy.writeI2c(self.offset + 4*self.i2c_data1,(data>>8)&0xff)
+        self.proxy.writeI2c(self.offset + 4*self.i2c_data2,(data>>16)&0xff)
+        self.proxy.writeI2c(self.offset + 4*self.i2c_data3,(data>>24)&0xff)
+        self.proxy.writeI2c(self.offset + 4*self.command, dev&0xff)
         time.sleep(0.01)
         if dev==self.LMX: 
-            self.proxy.writeI2c(self.command, dev)
+            self.proxy.writeI2c(self.offset + 4*self.command, dev&0xff)
             time.sleep(0.01)
             data = self._read()
         else:
-            data = self.proxy.readI2c(self.i2c_read1)&0xff
+            data = self.proxy.readI2c(self.offset + 4*self.i2c_read1)&0xff
 
         return data
 
@@ -144,16 +155,17 @@ class FmcCpld(object):
         dword = 0
         samplingrate_setting = 0x6020000
         rc = self.internal_ref_and_lmx_enable(clockmode=clockmode)
-        print('rc = self.internal_ref_and_lmx_enable(clockmode=clockmode)', rc )
         time.sleep(0.1)
         #LMX Programming for 3.2GHz
-        self._writeRegister(self.LMX,  5, 0x4087001)   # Force a Reset (default from codebuilder) 0x021F7001 << from data sheet default
+        self._writeRegister(self.LMX,  5, 0x4087001)  # Force a Reset (default from codebuilder) 0x021F7001 << from data sheet default
         # dword81 = self._readRegister(self.LMX, 5) 
         # print('dword81 = ',dword81)
         # dword81 =self._read()
         # print('dword81 = ',dword81)
-        data45 = self.proxy.readI2c(0x04)
-        print('data45 =', data45)
+        # data45 = self.proxy.readI2c(0x04)
+        # print('data45 =', data45)
+        # return
+
 
         self._writeRegister(self.LMX, 13, 0x4080C10)    # FOR 100MHz PDF  DLD TOL 1.7ns  0x4080C10
 
@@ -469,88 +481,88 @@ class FmcCpld(object):
     def internal_ref_and_lmx_enable(self, clockmode):
         rc = self.UNITAPI_OK
         # Read, Modify, Write to avoid clobbering any other register settings
-        dword = self.proxy.readI2c(self.cpld_address + 2*4) # each cpld address is 4 byte long
+        dword = self.GET_REG(self.cpld_address + 2)
         if(rc!=self.UNITAPI_OK):
             return rc
 
         if clockmode == self.CLOCKTREE_CLKSRC_INTERNAL:                         #Internal Reference
             # Set bits 3, 1, and 0
             dword |= 0xB
-            self.proxy.writeI2c(self.cpld_address + 2*4,dword)
+            self.SET_REG(self.cpld_address + 2, dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
             #Read, Modify, Write to avoid clobbering any other register settings
-            dword = self.proxy.readI2c(self.cpld_address + 1*4)
-            print(' self.cpld_address + 1*4, dword = ',dword)
+            dword = self.GET_REG(self.cpld_address + 1)
+            print('cpld_address + 1, dword = ',dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
             # configure the switch for the internal clock (CPLD address 1 bit 2)
             dword |= 1<<2
-            self.proxy.writeI2c(self.cpld_address + 1*4, dword)
+            self.SET_REG(self.cpld_address + 1, dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
         elif clockmode == self.CLOCKTREE_CLKSRC_EXTERNAL:
             # turn off 0sc, ref switch and LMX enable0
             dword = 0xC4
-            self.proxy.writeI2c(self.cpld_address + 2*4, dword)
+            self.SET_REG(self.cpld_address + 2, dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
             # Read, Modify, Write to avoid clobbering any other register settings
-            dword = self.proxy.readI2c(self.cpld_address + 1*4)
+            dword = self.GET_REG(self.cpld_address + 1)
             print(' self.cpld_address + 1*4, dword = ',dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
             # Clear bit 2
             dword &= 0xFB 
-            self.proxy.writeI2c(self.cpld_address + 1*4, dword)
+            self.SET_REG(self.cpld_address + 1, dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
-        elif clockmode == self.CLOCKTREE_REFSRC_EXTERNAL:         
+        elif clockmode == self.CLOCKTREE_REFSRC_EXTERNAL:    
+            print("External Reference Mode \n")    
             # turn off 0sc, point at ext ref enable LMX bits 3, 1, and 0
             dword = 0xCC
-            self.proxy.writeI2c(self.cpld_address + 2*4, dword)
+            self.SET_REG(self.cpld_address + 2, dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
-
             # Read, Modify, Write to avoid clobbering any other register settings
-            dword = self.proxy.readI2c(self.cpld_address + 1*4)
-            print(' self.cpld_address + 1*4, dword = ',dword)
+            dword = self.GET_REG(self.cpld_address + 1)
+            print(' self.cpld_address + 1, dword = ',dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
             # set bit 2
             dword |= 0x04
-            self.proxy.writeI2c(self.cpld_address + 1*4, dword)
+            self.SET_REG(self.cpld_address + 1, dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
         elif clockmode == self.CLOCKTREE_REFSRC_STACKED:         
             #turn ON 0sc, point at ext ref enable LMX bits 3, 1, and 0
             dword = 0xCD
-            self.proxy.writeI2c(self.cpld_address + 2*4, dword)
+            self.SET_REG(self.cpld_address + 2, dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
             # Read, Modify, Write to avoid clobbering any other register settings
-            dword = self.proxy.readI2c(self.cpld_address + 1*4)
+            dword = self.GET_REG(self.cpld_address + 1)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
             # set bit 2    (Internal Sample Clock)
             dword |= 0x04
-            self.proxy.writeI2c(self.cpld_address + 1*4, dword)
+            self.SET_REG(self.cpld_address + 1, dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
         else:
             # Clear bits 3, 1, and 0
             dword &= 0xF4
-            self.proxy.writeI2c(self.cpld_address + 2*4, dword)
+            self.SET_REG(self.cpld_address + 2, dword)
             if(rc!=self.UNITAPI_OK):
                 return rc
 
@@ -558,24 +570,20 @@ class FmcCpld(object):
     
     def reset_clock_chip(self):
         rc = self.UNITAPI_OK
-        # #just to check
-        # dword = 8
-        # self.proxy.writeI2c(self.cpld_address + 1*4, dword)
         # Read, Modify, Write to avoid clobbering any other register settings
-        dword = self.proxy.readI2c(self.cpld_address + 1*4)
-        print('dword = self.proxy.readI2c(self.cpld_address + 1*4) ', dword)
+        dword = self.GET_REG(self.cpld_address + 1)
         if(rc!=self.UNITAPI_OK):
             return rc
 
         # Set reset bit
         dword |= 0x08
-        self.proxy.writeI2c(self.cpld_address + 1*4, dword)
+        self.SET_REG(self.cpld_address + 1, dword)
         if(rc!=self.UNITAPI_OK):
             return rc
 
         # Clear reset bit
         dword &= 0xF7
-        self.proxy.writeI2c(self.cpld_address + 1*4, dword)
+        self.SET_REG(self.cpld_address + 1, dword)
         if(rc!=self.UNITAPI_OK):
             return rc
 
@@ -585,6 +593,7 @@ class FmcCpld(object):
         print('start adc init')
         adc_txemphasis=0
         rc = self.UNITAPI_OK
+        print("*** default_adc_init ***\n")
 
         #////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         # ADC Initializaton
@@ -594,16 +603,16 @@ class FmcCpld(object):
         # rc = unitapi_write_register(i2c_unit, I2C_BAR_CTRL+0x05, 0x00);
         # if(rc!=UNITAPI_OK)
         #         return rc;
-
+        print("Clearing ADC RESET pins")
         # Read, modify, write to avoid clobbering any other register settings
-        dword0 = self.proxy.readI2c(self.cpld_address + 1*4)
-        print(' self.cpld_address + 1*4, adc_init, dword0 = ',dword0)
+        dword0 = self.GET_REG(self.cpld_address + 1)
+        print(' self.cpld_address + 1, dword0 = ',hex(dword0))
         if(rc!=self.UNITAPI_OK):
             return rc
 
         # Force a clear on the ADC0 Reset Pin
         dword0 &= 0xFC
-        self.proxy.writeI2c(self.cpld_address + 1*4, dword0)
+        self.SET_REG(self.cpld_address + 1, dword0)
         if(rc!=self.UNITAPI_OK):
             return rc
             
@@ -672,7 +681,7 @@ class FmcCpld(object):
         if ((dword0 & 0x2) == 0x2):
             print("ADC0 SYSREF Calibration Done\n")
         else: 
-            print("ADC0 SYSREF Calibration NOT Done!\n")
+            print("ADC0 SYSREF Calibration NOT Done!\ndword=",dword0)
             return self.FMC134_ERR_ADC_INIT
         
         dword0 = self._readRegister(self.ADC1, 0x02B4)
@@ -768,10 +777,10 @@ class FmcCpld(object):
 
             self._writeRegister(self.ADC_BOTH, 0x006C, 0x00) # trigger
             dword0 = self._readRegister( self.ADC0, 0x006C)
-            print("CAL_TRIG 0x%x\n",dword0)
+            print(f"CAL_TRIG {hex(dword0)}\n")
             self._writeRegister(self.ADC_BOTH, 0x006C, 0x01) # trigger
             dword0 = self._readRegister(  self.ADC0, 0x006C)
-            print("CAL_TRIG 0x%x\n",dword0)
+            print(f"CAL_TRIG {hex(dword0)}\n")
             for ch in range(2):
                 adcsel = (self.ADC0 if ch==0 else self.ADC1)
                 for i in range(100):
@@ -781,11 +790,11 @@ class FmcCpld(object):
                     if(rc!=self.UNITAPI_OK):
                         return rc
                     if ((dword0 & 0x1) == 0x1):
-                        print("ADC%d FG Calibration Done\n",ch)
+                        print("ADC%d FG Calibration Done\n"% ch)
                         break
                     
                     else:
-                        print("ADC%d FG Calibration NOT Done! [%x]\n",ch,dword0)
+                        print("ADC%d FG Calibration NOT Done! [%x]\n"%(ch,dword0))
                     
                 
                 if ((dword0 & 0x1) == 0):
@@ -876,7 +885,7 @@ class I2c134(pr.Device):
         @self.command(value='')
         def set_134_clk(arg):
             self.i2cmux.setPort(i2cSwitchPort[arg])
-            self.fmcCpld.default_clocktree_init(1)
+            self.fmcCpld.default_clocktree_init(2)
         @self.command(value='')
         def set_134_adc(arg):
             self.i2cmux.setPort(i2cSwitchPort[arg])

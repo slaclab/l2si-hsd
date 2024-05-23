@@ -59,7 +59,8 @@ class Root(pr.Root):
             self._initRead = initRead
 
             # Create PCIE memory mapped interface
-            self.memMap = rogue.hardware.axi.AxiMemMap(dev)
+            self.memMap = pcie.createAxiPcieMemMap(dev, 'localhost', 8000)
+            # self.memMap = rogue.hardware.axi.AxiMemMap(dev)
 
             # Map the DMA streams
             self.dmaStream = rogue.hardware.axi.AxiStreamDma(dev,(0x100*0)+0,1)
@@ -72,7 +73,7 @@ class Root(pr.Root):
             self._initRead = False
 
             # Create PCIE memory mapped interface
-            self.memMap = rogue.interfaces.memory.TcpClient('localhost',10000)
+            self.memMap = rogue.hardware.axi.AxiMemMap(dev) #pcie.createAxiPcieMemMap(dev, 'localhost', 8000)
 
             # Map the simulation DMA streams
             self.dmaStream = rogue.interfaces.stream.TcpClient('localhost',10000+2*0) # 2 TCP ports per stream
@@ -85,42 +86,27 @@ class Root(pr.Root):
         self.add(pcie.AxiPcieCore(
             offset      = 0x0000_0000,
             memBase     = self.memMap,
-            numDmaLanes = 1,
+            numDmaLanes = 2,
             sim         = self.sim,
             expand      = True,
         ))
 
         # I2C   @0x000A_0000
         self.add(hsd_6400m.I2c134(
+            name   = 'I2cBus',
             offset = 0x000A_0000,
+            memBase     = self.memMap,
             expand = False))
 
-        # I2C access is slow.  So using a AXI-Lite proxy to prevent holding up CPU during a BAR0 memory map transaction
-        # self.add(axi.AxiLiteMasterProxy(
-        #     name   = 'AxilBridge',
-        #     offset = 0x70000,
-        # ))
-        # self.add(lclsHsdtokenizer.I2c134(
-        #     name        = 'I2c134',
-        #     offset      = 0x71000,
-        #     memBase     = self.AxilBridge.proxy,
-        #     enabled     = False, # enabled=False because I2C are slow transactions and might "log jam" register transaction pipeline
-        # ))
-        # Add the Application device to base
-        # self.add(lclsHsdtokenizer.Application(
-        #     offset      = 0x0080_0000,
-        #     memBase     = self.memMap,
-        #     sim         = self.sim,
-        #     expand      = True,
-        # ))
 
-        # # Add the JesdAdc device to base
-        # self.add(lclsHsdtokenizer.JesdAdc(
-        #     offset      = 0x0010_0000,
-        #     memBase     = self.memMap,
-        #     sim         = self.sim,
-        #     expand      = True,
-        # ))
+        # Add the Application device to base
+        self.add(hsd_6400m.Application(
+            offset      = 0x0010_0000,
+            memBase     = self.memMap,
+            sim         = self.sim,
+            expand      = True,
+        ))
+
 
         #################################################################
 
@@ -137,25 +123,13 @@ class Root(pr.Root):
 
         # Connect PreProcessing Tester RX/TX to DMA stream
         # self.PreProcessingTester >> self.fifoTx >> self.dmaStream
-        self.PreProcessingTester << self.fifoRx << self.dmaStream
+        # self.PreProcessingTester << self.fifoRx << self.dmaStream
 
         #################################################################
 
     def start(self, **kwargs):
         super().start(**kwargs)
 
-        # Check if not VCS simulation
-        # if (not self.sim):
-        #     # Load the registers
-        #     self.PreProcessingTester.LoadRegisters()
-            # self.PreProcessingTester.SendFrame()
-            # appTx = self.find(typ=lclsHsdtokenizer.AppTx)
-            # Turn off the Continuous Mode
-            # appTx = self.find(typ=lclsHsdtokenizer.AppTx)
-            # # Turn off the Continuous Mode
-            # for devPtr in appTx:
-            #     devPtr.ContinuousMode.set(False)
-            # self.CountReset()
         # Check if not simulation
         if not self.sim:
             # Refresh the software shadow variables
@@ -166,12 +140,8 @@ class Root(pr.Root):
             self.LoadConfig(self.defaultFile)
             # set clks
             print('set clks')
-            self.Application.I2cBus.set_134_clk('LocalBus')
+            self.I2cBus.set_134_clk('PrimaryFmc')
             # self.Application.I2cBus.fmcCpld.default_clocktree_init(0)
-            print('set adc')
-            self.Application.I2cBus.set_134_adc('PrimaryFmc')
-            # self.Application.I2cBus.fmcCpld.internal_ref_and_lmx_enable(0)
-            # self.Application.I2cBus.set_i2c_mux('PrimaryFmc')
-            # self.Application.I2cBus.fmcCpld.default_adc_init(cmode = 'FG_CAL')
-            # self.Application.I2cBus.fmcCpld.reset_clock_chip
+            # print('set adc')
+            self.I2cBus.set_134_adc('PrimaryFmc')
             print('done')

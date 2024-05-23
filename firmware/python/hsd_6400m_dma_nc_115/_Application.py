@@ -1,3 +1,4 @@
+
 # -------------------------------------------------------------------------------
 # -- Company    : SLAC National Accelerator Laboratory
 # -------------------------------------------------------------------------------
@@ -12,31 +13,20 @@
 # -------------------------------------------------------------------------------
 
 import pyrogue as pr
-
-import lcls_hsd_tokenizer as lclsHsdtokenizer 
 import surf.axi as axi
+
+import hsd_6400m_dma_nc_115 as  hsd_6400m       # Add the JesdAdc device to base
+
 
 class Application(pr.Device):
     def __init__( self,sim=False,**kwargs):
         super().__init__(**kwargs)
 
-        self.add(axi.AxiStreamRingBuffer(
-            offset   = 0x00_000000,
-            # expand   = True,
+        # Add the JesdAdc device to base
+        self.add(hsd_6400m.JesdAdc(
+            offset      = 0x0000_0000,
+            # memBase     = self.memMap,
+            # sim         = self.sim,
+            expand      = True,
         ))
-        self.add(lclsHsdtokenizer.I2c134(
-            name   = 'I2cBus',
-            offset = 0x0001_0000,
-            expand = False))
-        self.add(lclsHsdtokenizer.DebugClk(
-            name   = 'DebugClk',
-            offset = 0x0002_0000,
-            expand = False))
-        # self.add(lclsHsdtokenizer.AppTx(
-        #     offset = 0x0000_0000,
-        #     expand = True,
-        # ))
-        # self.add(devBoard.WeinerFilter(
-        #     offset = 0x0010_1000,
-        #     # expand = True,
-        # ))
+

@@ -10,23 +10,13 @@
 
 import pyrogue as pr
 
-import lcls_hsd_tokenizer as lclsHsdtokenizer
+import hsd_6400m_dma_nc_115 as hsd_6400m
 
 class JesdAdc(pr.Device):
     def __init__( self,sim=False,**kwargs):
         super().__init__(**kwargs)
 
-        self.add(lclsHsdtokenizer.fmc134_ctrl(
-            offset = 0x0000_0000,
-            # expand = True,
-        ))
-        for i in range(2):
-                self.add(lclsHsdtokenizer.JesdRx(
-                    name = f'JesdRx[{i}]',
-                    offset = 0x0001_0000 + i*0x1_0000,
-                ))
-                
-        self.add(lclsHsdtokenizer.pllreset(
-            offset = 0x0003_0000,
+        self.add(hsd_6400m.fmc134_ctrl(
+            offset = 0x0000_8000,
             # expand = True,
         ))
