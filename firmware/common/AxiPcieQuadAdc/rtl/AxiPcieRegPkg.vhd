@@ -37,7 +37,7 @@ package AxiPcieRegPkg is
   constant GTH_ADDR_C     : slv(31 downto 0) := x"00031000";
   constant XVC_ADDR_C     : slv(31 downto 0) := x"00032000";
   constant TIM_ADDR_C     : slv(31 downto 0) := x"00040000";
-  constant APP_ADDR_C     : slv(31 downto 0) := x"00080000";
+  constant APP_ADDR_C     : slv(31 downto 0) := x"00800000";
    
 end package AxiPcieRegPkg;
 

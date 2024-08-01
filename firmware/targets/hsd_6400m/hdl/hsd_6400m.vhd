@@ -191,44 +191,44 @@ architecture rtl of hsd_6400m is
   constant NUM_AXI_MASTERS_C : integer := 10;
   constant AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(NUM_AXI_MASTERS_C-1 downto 0) := (
     CHIP_INDEX_C      => (
-      baseAddr        => x"00200000",
+      baseAddr        => x"00800000",
       addrBits        => 15,
       connectivity    => x"FFFF"),
     JESD_INDEX_C      => (
-      baseAddr        => x"00208000",
+      baseAddr        => x"00810000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     MMCM_INDEX_C      => (
-      baseAddr        => x"00208800",
+      baseAddr        => x"00820000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
-    PGP_INDEX_C       => (
-      baseAddr        => x"00210000",
-      addrBits        => 15,
-      connectivity    => x"FFFF"),
     EXT_INDEX_C       => (
-      baseAddr        => x"00218000",
+      baseAddr        => x"00840000",
       addrBits        => 12,
       connectivity    => x"FFFF"),
     QSFP_INDEX_C+0    => (
-      baseAddr        => x"00219000",
+      baseAddr        => x"00850000",
       addrBits        => 12,
       connectivity    => x"FFFF"),
     QSFP_INDEX_C+1    => (
-      baseAddr        => x"0021A000",
+      baseAddr        => x"00860000",
       addrBits        => 12,
       connectivity    => x"FFFF"),
     SURF_JESD_INDEX_C+0 => (
-      baseAddr        => x"0021B000",
+      baseAddr        => x"00870000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     SURF_JESD_INDEX_C+1 => (
-      baseAddr        => x"0021B800",
+      baseAddr        => x"00880000",
       addrBits        => 11,
       connectivity    => x"FFFF"),
     TEM_INDEX_C       => (
-      baseAddr        => x"00220000",
+      baseAddr        => x"00890000",
       addrBits        => 16,
+      connectivity    => x"FFFF"),
+    PGP_INDEX_C       => (
+      baseAddr        => x"00900000",
+      addrBits        => 20,
       connectivity    => x"FFFF") );
 
   signal mAxilWriteMasters : AxiLiteWriteMasterArray(NUM_AXI_MASTERS_C-1 downto 0);
@@ -236,7 +236,39 @@ architecture rtl of hsd_6400m is
   signal mAxilReadMasters  : AxiLiteReadMasterArray (NUM_AXI_MASTERS_C-1 downto 0);
   signal mAxilReadSlaves   : AxiLiteReadSlaveArray  (NUM_AXI_MASTERS_C-1 downto 0);
 
-  constant PGP_AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(7 downto 0) := genAxiLiteConfig( 8, AXI_CROSSBAR_MASTERS_CONFIG_C(PGP_INDEX_C).baseAddr, 15, 12 );
+  constant PGP_AXI_CROSSBAR_MASTERS_CONFIG_C : AxiLiteCrossbarMasterConfigArray(7 downto 0) := (
+    0      => (
+      baseAddr        => x"00900000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    1      => (
+      baseAddr        => x"00910000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    2      => (
+      baseAddr        => x"00920000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    3       => (
+      baseAddr        => x"00930000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    4       => (
+      baseAddr        => x"00940000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    5    => (
+      baseAddr        => x"00950000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    6    => (
+      baseAddr        => x"00960000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"),
+    7 => (
+      baseAddr        => x"00970000",
+      addrBits        => 16,
+      connectivity    => x"FFFF"));
 
   signal mPgpAxilWriteMasters : AxiLiteWriteMasterArray(7 downto 0);
   signal mPgpAxilWriteSlaves  : AxiLiteWriteSlaveArray (7 downto 0);

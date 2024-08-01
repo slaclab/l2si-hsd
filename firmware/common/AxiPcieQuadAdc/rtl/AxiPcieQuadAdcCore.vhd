@@ -135,8 +135,8 @@ architecture mapping of AxiPcieQuadAdcCore is
          addrBits     => 18,
          connectivity => x"FFFF"),
       APP_INDEX_C     => (
-         baseAddr     => x"0020_0000",
-         addrBits     => 20,
+         baseAddr     => x"0080_0000",
+         addrBits     => 23,
          connectivity => x"FFFF"));
         
   signal axilReadMasters  : AxiLiteReadMasterArray (NAXI_C-1 downto 0);
