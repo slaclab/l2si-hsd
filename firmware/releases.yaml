@@ -29,8 +29,8 @@ Targets:
     ImageDir: targets/hsd_6400m_dma_nc/images
     Extensions:
       - mcs
-  hsd_6400m_dma_nc_115:
-    ImageDir: targets/hsd_6400m_dma_nc_115/images
+  hsd_6400m_115:
+    ImageDir: targets/hsd_6400m_115/images
     Extensions:
       - mcs
 
@@ -39,8 +39,9 @@ Releases:
     Primary: True
     Targets:
       - hsd_6400m
-      - hsd_6400m_dma_sc
-      - hsd_6400m_dma_nc
+      - hsd_6400m_115
+#      - hsd_6400m_dma_sc
+#      - hsd_6400m_dma_nc
 #      - hsd_6400m_dma_nc_115
     Types:
       - firmware
