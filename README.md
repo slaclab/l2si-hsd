@@ -14,6 +14,7 @@ High speed digitizer for SLAC LCLS2 Data Acquisition
     929kHz (*200 = 185.7MHz)
     refClk = 185.7/2 = 92.857 MHz
     adcClk = 160MHz * 13/14 = 929kHz *160
+    sample rate = 40*adcClk = 5.942857 GS/s
   
 
 Some limits:
