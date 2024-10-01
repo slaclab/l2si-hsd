@@ -13,7 +13,8 @@ use work.QuadAdcPkg.all;
 entity hsd_thr_ilv_native_fine is
 generic (
     ILV_G                    : INTEGER := 4;
-    BASELINE                 : AdcWord);
+    BASECORR                 : boolean := true;
+    BASELINE                 : slv(14 downto 0) := toSlv(2**14,15) );
 port (
     ap_clk   : IN STD_LOGIC;
     ap_rst_n : IN STD_LOGIC;
@@ -50,10 +51,11 @@ architecture behav of hsd_thr_ilv_native_fine is
   constant KEEP_ROWS_C : integer := 3;
   constant CBITS_C : integer := bitSize(KEEP_ROWS_C*ROW_SIZE);
   constant ADDRB_C : integer := bitSize(2*KEEP_ROWS_C+3);
-
+  constant MAXACCUM_C : integer := 12;
+  
   type RegType is record
-    xlo        : AdcWord;           -- low threshold
-    xhi        : AdcWord;           -- high threshold
+    xlo        : slv(14 downto 0);           -- low threshold
+    xhi        : slv(14 downto 0);           -- high threshold
     tpre       : slv(CBITS_C-1 downto 0);  -- number of super samples to readout before crossing
     tpost      : slv(CBITS_C-1 downto 0);  -- number of super samples to readout after crossing
     tpreRows   : integer range 0 to KEEP_ROWS_C;
@@ -83,8 +85,11 @@ architecture behav of hsd_thr_ilv_native_fine is
     y          : Slv16Array(ILV_G*ROW_SIZE+ILV_G-1 downto 0); -- readout
     t          : Slv2Array (      ROW_SIZE downto 0);
     yv         : slv       (      ROW_IDXB-1 downto 0);  -- number of valid
-                                                         -- readout samples
-    
+    --  baseline correction configuration
+    baseline   : slv(14 downto 0);
+    acc_shift  : slv( 3 downto 0);
+    acc_rst    : sl;
+    --
     readSlave  : AxiLiteReadSlaveType;
     writeSlave : AxiLiteWriteSlaveType;
   end record;
@@ -120,14 +125,24 @@ architecture behav of hsd_thr_ilv_native_fine is
     y          => (others=>(others=>'0')),
     t          => (others=>(others=>'0')),
     yv         => (others=>'0'),
+    --  baseline correction configuration
+    baseline   => BASELINE,
+    acc_shift  => toSlv(12,4),
+    acc_rst    => '1',
+    --
     readSlave  => AXI_LITE_READ_SLAVE_INIT_C,
     writeSlave => AXI_LITE_WRITE_SLAVE_INIT_C );
 
   signal r    : RegType := REG_INIT_C;
   signal r_in : RegType;
 
-  signal xsave : AdcWordArray(ILV_G*ROW_SIZE-1 downto 0);
-  signal tsave : Slv2Array   (      ROW_SIZE-1 downto 0);
+  --constant ADCWLEN_C : integer := AdcWord'length;
+  constant ADCWLEN_C : integer := 15;
+  signal xC : Slv15Array(ILV_G*ROW_SIZE-1 downto 0);
+  signal tC : Slv2Array (ROW_SIZE-1 downto 0);
+
+  signal xsave : Slv15Array(ILV_G*ROW_SIZE-1 downto 0);
+  signal tsave : Slv2Array (      ROW_SIZE-1 downto 0);
 
   constant ANY_SKIP_G : boolean := true;
   
@@ -136,6 +151,26 @@ begin
   axilWriteSlave <= r.writeSlave;
   axilReadSlave  <= r.readSlave;
 
+  GEN_CORR : if BASECORR generate
+    U_CORR : entity work.hsd_baseline_corr
+      port map (
+        rst      => r.acc_rst,
+        clk      => ap_clk,
+        accShift => r.acc_shift,
+        baseline => r.baseline,
+        tIn      => tin,
+        adcIn    => x,
+        tOut     => tC,
+        adcOut   => xC);
+  end generate GEN_CORR;
+
+  NO_GEN_CORR : if not BASECORR generate
+    tC <= tIn;
+    GEN_XC : for i in xC'range generate
+      xC(i) <= resize(x(i),15);
+    end generate GEN_XC;
+  end generate NO_GEN_CORR;
+  
   --
   --  Buffer of sample and trigger data
   --    Necessary for prepending samples when a threshold crossing
@@ -143,17 +178,17 @@ begin
   --
   GEN_RAM : for i in 0 to ROW_SIZE-1 generate
     U_RAMB : block is
-      signal din,dout : slv(ILV_G*AdcWord'length+1 downto 0);
+      signal din,dout : slv(ILV_G*ADCWLEN_C+1 downto 0);
     begin
       GEN_DIN : for j in 0 to ILV_G-1 generate
-        din((j+1)*AdcWord'length-1 downto j*AdcWord'length) <= x(i*ILV_G+j);
-        xsave(i*ILV_G+j) <= dout((j+1)*AdcWord'length-1 downto j*AdcWord'length);
+        din((j+1)*ADCWLEN_C-1 downto j*ADCWLEN_C) <= xC(i*ILV_G+j);
+        xsave(i*ILV_G+j) <= dout((j+1)*ADCWLEN_C-1 downto j*ADCWLEN_C);
       end generate;
-      din(ILV_G*AdcWord'length+1 downto ILV_G*AdcWord'length) <= tin(i);
-      tsave(i) <= dout(ILV_G*AdcWord'length+1 downto ILV_G*AdcWord'length);
+      din(ILV_G*ADCWLEN_C+1 downto ILV_G*ADCWLEN_C) <= tC(i);
+      tsave(i) <= dout(ILV_G*ADCWLEN_C+1 downto ILV_G*ADCWLEN_C);
       
       U_RAM : entity surf.SimpleDualPortRam
-        generic map ( DATA_WIDTH_G => ILV_G*AdcWord'length+2,
+        generic map ( DATA_WIDTH_G => ILV_G*ADCWLEN_C+2,
                       ADDR_WIDTH_G => r.waddr'length )
         port map ( clka                => ap_clk,
                    wea                 => '1',
@@ -165,7 +200,7 @@ begin
     end block;
   end generate;
   
-  comb : process ( ap_rst_n, r, x, tin, xsave, tsave,
+  comb : process ( ap_rst_n, r, xC, tC, xsave, tsave,
                    axilWriteMaster, axilReadMaster ) is
     variable v      : RegType;
     variable ep     : AxiLiteEndPointType;
@@ -194,7 +229,13 @@ begin
                                                  -- crossing
     axiSlaveRegister ( ep, x"28", 0, v.tpost );  -- samples after gate
                                                  -- closes/thr crossing
-
+    axiSlaveRegister ( ep, x"40", 0, v.baseline );
+    axiSlaveRegister ( ep, x"44", 0, v.acc_shift );
+    axiWrDetect( ep, x"44", v.acc_rst);
+    if v.acc_shift < toSlv(3,4) or v.acc_shift > toSlv(MAXACCUM_C,4) then
+      v.acc_shift := r.acc_shift;
+    end if;
+    
     tpre  := conv_integer(r.tpre);
     tpost := conv_integer(r.tpost);
     v.tpreRows  := (tpre +ROW_SIZE-1)/ROW_SIZE;
@@ -221,7 +262,7 @@ begin
     for i in 0 to ROW_SIZE-1 loop
       for j in 0 to ILV_G-1 loop
         k := 4*i+j;
-        if ((x(k) < r.xlo) or (x(k) > r.xhi) or (tin(i) /= "00")) then
+        if ((xC(k) < r.xlo) or (xC(k) > r.xhi) or (tC(i) /= "00")) then
           ikeepl := i;
         end if;
       end loop;
@@ -232,7 +273,7 @@ begin
     for i in ROW_SIZE-1 downto 0 loop
       for j in 0 to ILV_G-1 loop
         k := 4*i+j;
-        if ((x(k) < r.xlo) or (x(k) > r.xhi) or (tin(i) /= "00")) then
+        if ((xC(k) < r.xlo) or (xC(k) > r.xhi) or (tC(i) /= "00")) then
           ikeepf := i;
         end if;
       end loop;

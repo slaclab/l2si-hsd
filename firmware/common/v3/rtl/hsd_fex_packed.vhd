@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2024-04-24
+-- Last update: 2024-09-30
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -706,7 +706,10 @@ begin
   GEN_NAF : if ALGORITHM_G = "NAF" generate
     U_FEX : entity work.hsd_thr_ilv_native_fine
       generic map ( ILV_G => ILV_G,
-                    BASELINE => ("01" & toSlv(0,AdcWord'length-2)) )
+                    -- BASECORR => false,
+                    -- BASELINE => toSlv(2**11,15) )
+                    BASECORR => true,
+                    BASELINE => toSlv(2**14,15) )
       port map ( ap_clk          => clk,
                  ap_rst_n        => rstn,
                  sync            => configSync,
