@@ -128,7 +128,7 @@ begin
     end loop;
 
     v.adcOut := r.adcNew;
-    v.tOut   := t.tNew;
+    v.tOut   := r.tNew;
     k := 0;
     for j in 0 to 9 loop
       for i in 0 to 3 loop
