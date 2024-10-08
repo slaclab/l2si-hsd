@@ -32,7 +32,9 @@ architecture behav of hsd_baseline_corr is
   
   type RegType is record
     tOut    : Slv2Array (NUMWORDS_G/4-1 downto 0);
+    tNew    : Slv2Array (NUMWORDS_G/4-1 downto 0);
     adcOut  : Slv15Array(NUMWORDS_G-1 downto 0);
+    adcNew  : Slv15Array(NUMWORDS_G-1 downto 0);
     adcSum  : Slv15Array(3 downto 0);
     adcRun  : Slv24Array(3 downto 0);
     adcCorr : Slv15Array(3 downto 0);
@@ -43,7 +45,9 @@ architecture behav of hsd_baseline_corr is
 
   constant REG_INIT_C : RegType := (
     tOut    => (others=>"00"),
+    tNew    => (others=>"00"),
     adcOut  => (others=>toSlv(0,15)),
+    adcNew  => (others=>toSlv(0,15)),
     adcSum  => (others=>toSlv(0,15)),
     adcRun  => (others=>toSlv(0,24)),
     adcCorr => (others=>toSlv(2**14,15)),
@@ -94,7 +98,7 @@ begin
   begin
     v := r;
 
-    v.tOut := tIn;
+    v.tNew := tIn;
     
     start := '0';
     for j in 0 to 9 loop
@@ -112,18 +116,29 @@ begin
     k := 0;
     for j in 0 to 9 loop
       for i in 0 to 3 loop
-        q := (others=>'0');
-        q(14 downto 3) := adcIn(k)(11 downto 0); -- f(11:3)
+        q := '0' & adcIn(k) & "000";
         q := q + resize(baseline,16) - resize(v.adcCorr(i),16);
         if q(15) = '1' then -- underflow/overflow
-          v.adcOut(k) := OUT_OF_RANGE;
+          v.adcNew(k) := OUT_OF_RANGE;
         else
-          v.adcOut(k) := resize(q,15);
+          v.adcNew(k) := q(14 downto 0);
         end if;
         k := k+1;
       end loop;
     end loop;
 
+    v.adcOut := r.adcNew;
+    v.tOut   := t.tNew;
+    k := 0;
+    for j in 0 to 9 loop
+      for i in 0 to 3 loop
+        if r.tNew(j)(0)='1' then
+          v.adcOut(k) := r.adcCorr(i);
+        end if;
+        k := k+1;
+      end loop;
+    end loop;
+    
     k := 0;
     v.adcSum := (others=>toSlv(0,15));
     --for j in 0 to 9 loop  -- 10 does not give us powers of 2!
