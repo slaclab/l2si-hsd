@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2024-04-29
+-- Last update: 2024-10-09
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -154,7 +154,7 @@ architecture top_level_app of hsd_6400m_sim is
    signal fmcClk  : slv(NFMC_C-1 downto 0);
    signal msgConfig    : XpmPartMsgConfigType := XPM_PART_MSG_CONFIG_INIT_C;
 
-   constant CMDS_C : AxiLiteWriteCmdArray(0 to 25) := (
+   constant CMDS_C : AxiLiteWriteCmdArray(0 to 27) := (
      --  Chip Adc Reg
      ( addr => x"00000010", value => x"000000ff" ), -- assert DMA rst
      ( addr => x"00000010", value => x"00000000" ), -- release DMA rst
@@ -166,16 +166,18 @@ architecture top_level_app of hsd_6400m_sim is
      ( addr => x"00001014", value => x"00000064" ), -- fexLen/prescale
      ( addr => x"00001018", value => x"00040C00" ), -- almostFull
      ( addr => x"00001020", value => x"00000004" ), -- fexBegin
-     ( addr => x"00001024", value => x"00100064" ), -- fexLen/prescale
+     ( addr => x"00001024", value => x"00000064" ), -- fexLen/prescale
      ( addr => x"00001028", value => x"00040C00" ), -- almostFull
      ( addr => x"00001030", value => x"00000004" ), -- fexBegin
      ( addr => x"00001034", value => x"00200064" ), -- fexLen/prescale
      ( addr => x"00001038", value => x"00040C00" ), -- almostFull
-     ( addr => x"00001210", value => x"00000801" ), -- prescale
-     ( addr => x"00001218", value => x"0000080E" ), -- fexLen/delay
-     ( addr => x"00001220", value => x"00000001" ), -- almostFull
-     ( addr => x"00001228", value => x"00000002" ), -- prescale
-     ( addr => x"00001000", value => x"00010000" ), -- fexEnable
+     ( addr => x"00001210", value => x"00000801" ), -- xlo
+     ( addr => x"00001218", value => x"0000080E" ), -- xhi
+     ( addr => x"00001220", value => x"00000001" ), -- tpre
+     ( addr => x"00001228", value => x"00000002" ), -- tpost
+     ( addr => x"00001240", value => x"00004000" ), -- baseline
+     ( addr => x"00001244", value => x"0000000c" ), -- acc_shift
+     ( addr => x"00001000", value => x"00000003" ), -- fexEnable
      -- Chip Adc Reg
      ( addr => x"00000010", value => x"C0000000" ), -- enable
      -- XpmMessageAligner

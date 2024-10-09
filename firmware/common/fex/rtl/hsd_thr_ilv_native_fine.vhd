@@ -231,6 +231,7 @@ begin
                                                  -- closes/thr crossing
     axiSlaveRegister ( ep, x"40", 0, v.baseline );
     axiSlaveRegister ( ep, x"44", 0, v.acc_shift );
+    v.acc_rst := '0';
     axiWrDetect( ep, x"44", v.acc_rst);
     if v.acc_shift < toSlv(3,4) or v.acc_shift > toSlv(MAXACCUM_C,4) then
       v.acc_shift := r.acc_shift;
