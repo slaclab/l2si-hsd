@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2024-09-30
+-- Last update: 2024-10-10
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -203,6 +203,8 @@ architecture mapping of hsd_fex_packed is
   signal dn0   : slv(4*ROW_SIZE-1 downto 0);
   signal dr0,dt0 : slv(4*ROW_SIZE-1 downto 0);
   signal tr0,tt0 : slv(  ROW_SIZE-1 downto 0);
+
+  signal oor : sl;
   
   function encodeAddr( addr : slv; off : integer ) return slv is
     variable result : slv(CACHE_ADDR_LEN_C-1 downto 0) := (others=>'0');
@@ -382,7 +384,7 @@ begin
   
   comb : process( r, clear, lopen, lskip, lclose, lopen_phase, lclose_phase,
                   l1in, l1ina, l0tag, l1tag, dvalid,
-                  tout, dout, douten, rddata, maxisSlave ) is
+                  tout, dout, douten, oor, rddata, maxisSlave ) is
     variable v : RegType;
 --    variable n : integer range 0 to 2*ROW_SIZE-1;
     variable n : integer;
@@ -457,13 +459,16 @@ begin
     --
     --  check if data was truncated while the gate was open
     --
-    if r.sink = '1' then
-      for i in r.cache'range loop
-        if r.cache(i).state = OPEN_S then
+    for i in r.cache'range loop
+      if r.cache(i).state = OPEN_S then
+        if r.sink = '1' then
           v.cache(i).ovFlow := '1';
         end if;
-      end loop;  -- i
-    end if;
+        if oor = '1' then
+          v.cache(i).oor := '1';
+        end if;
+      end if;
+    end loop;  -- i
     
     --
     --  check if a gate has closed; latch time
@@ -583,7 +588,8 @@ begin
               pload := r.cache(i).didxs;
               pload := pload + ROW_SIZE*r.cache(i).drows;
               pload := pload*ILV_G;
-              q.axisMaster.tData(29 downto 0) := toSlv(pload,30);
+              q.axisMaster.tData(28 downto 0) := toSlv(pload,29);
+              q.axisMaster.tData(29) := r.cache(i).oor;
               q.axisMaster.tData(30) := not r.cache(i).valid;
               q.axisMaster.tData(31) := r.cache(i).ovflow;
               q.axisMaster.tData( 47 downto  32) := toSlv(0,16);         -- boff,eoff
@@ -686,6 +692,7 @@ begin
           (ALGORITHM_G = "NCH" and ROW_SIZE=10)) report "Unknown fex module" severity failure;
 
   GEN_NAT : if ALGORITHM_G = "NAT" generate
+    oor <= '0';
     U_FEX : entity work.hsd_thr_ilv_native
       generic map ( ILV_G => ILV_G,
                     BASELINE => ("01" & toSlv(0,AdcWord'length-2)) )
@@ -706,10 +713,7 @@ begin
   GEN_NAF : if ALGORITHM_G = "NAF" generate
     U_FEX : entity work.hsd_thr_ilv_native_fine
       generic map ( ILV_G => ILV_G,
-                    -- BASECORR => false,
-                    -- BASELINE => toSlv(2**11,15) )
-                    BASECORR => true,
-                    BASELINE => toSlv(2**14,15) )
+                    BASECORR => true )
       port map ( ap_clk          => clk,
                  ap_rst_n        => rstn,
                  sync            => configSync,
@@ -718,6 +722,7 @@ begin
                  y               => idout,
                  tout            => tout,
                  yv              => douten,
+                 oor             => oor,
                  axilReadMaster  => axilReadMaster,
                  axilReadSlave   => axilReadSlave,
                  axilWriteMaster => axilWriteMaster,
@@ -725,6 +730,7 @@ begin
   end generate;
 
   GEN_NTR : if ALGORITHM_G = "NTR" generate
+    oor <= '0';
     U_FEX : entity work.hsd_raw_ilv_native
       generic map ( ILV_G   => ILV_G )
       port map ( ap_clk          => clk,
@@ -742,6 +748,7 @@ begin
   end generate;
 
   GEN_NCH : if ALGORITHM_G = "NCH" generate
+    oor <= '0';
     GEN_126 : if ROW_SIZE = 8 generate
       U_FEX : entity work.hsd_raw_mux_native
         generic map ( ID_G    => ALG_ID_G,

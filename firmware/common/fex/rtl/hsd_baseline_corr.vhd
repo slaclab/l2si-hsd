@@ -1,3 +1,20 @@
+-------------------------------------------------------------------------------
+-- Company    : SLAC National Accelerator Laboratory
+-------------------------------------------------------------------------------
+-- Description: Baseline correction for ADC data stream
+--   Corrects data by subtracting an averaged baseline sampled from data
+--  preceding the trigger.  Assumes input data is 12-bit, output data is 15-bit
+--  with 4-bits fractional.  Out-of-range data is signified by the 'oor' signal.
+------------------------------------------------------------------------------
+-- This file is part of 'SLAC Firmware Standard Library'.
+-- It is subject to the license terms in the LICENSE.txt file found in the
+-- top-level directory of this distribution and at:
+--    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html.
+-- No part of 'SLAC Firmware Standard Library', including this file,
+-- may be copied, modified, propagated, or distributed except according to
+-- the terms contained in the LICENSE.txt file.
+------------------------------------------------------------------------------
+
 library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;
@@ -16,41 +33,48 @@ entity hsd_baseline_corr is
   port (
     rst       : in  std_logic;
     clk       : in  std_logic;
-    accShift  : in  slv( 3 downto 0) := toSlv(12,4); -- 3 <= accShift <= 12
+    accShift  : in  slv( 3 downto 0) := toSlv(12,4); -- 4 <= accShift <= 12
     baseline  : in  slv(14 downto 0) := toSlv(2**14,15);
     tIn       : in  Slv2Array   (NUMWORDS_G/4-1 downto 0);
     adcIn     : in  AdcWordArray(NUMWORDS_G-1 downto 0);
     tOut      : out Slv2Array   (NUMWORDS_G/4-1 downto 0);
-    adcOut    : out Slv15Array  (NUMWORDS_G-1 downto 0) );
+    adcOut    : out Slv15Array  (NUMWORDS_G-1 downto 0);
+    oor       : out sl );
 end;  
 
 architecture behav of hsd_baseline_corr is
 
   constant MAXACCUM_C : integer := MAXACCUM_G;
+  constant FRACBITS_C : integer := 4;
   
   type StateType is (IDLE_S, ACCUM_S);
   
   type RegType is record
+    init    : sl;
+    oor     : sl;
     tOut    : Slv2Array (NUMWORDS_G/4-1 downto 0);
     tNew    : Slv2Array (NUMWORDS_G/4-1 downto 0);
     adcOut  : Slv15Array(NUMWORDS_G-1 downto 0);
     adcNew  : Slv15Array(NUMWORDS_G-1 downto 0);
-    adcSum  : Slv15Array(3 downto 0);
-    adcRun  : Slv24Array(3 downto 0);
-    adcCorr : Slv15Array(3 downto 0);
+    adcSum  : Slv15Array(3 downto 0); -- 12-bit input + 3-bits summing (to 8)
+    adcRun  : Slv24Array(3 downto 0); -- 12-bit input + MAXACCUM_C bits summing
+    adcCorr : Slv16Array(3 downto 0); -- 12-bit input + 4-bits fractional
+    -- RAM for sums of 8 samples (one clk)
     addr    : slv(MAXACCUM_C-4 downto 0);
     wraddr  : slv(MAXACCUM_C-4 downto 0);
     rdaddr  : slv(MAXACCUM_C-4 downto 0);
   end record;
 
   constant REG_INIT_C : RegType := (
+    init    => '1',
+    oor     => '1',
     tOut    => (others=>"00"),
     tNew    => (others=>"00"),
     adcOut  => (others=>toSlv(0,15)),
     adcNew  => (others=>toSlv(0,15)),
     adcSum  => (others=>toSlv(0,15)),
     adcRun  => (others=>toSlv(0,24)),
-    adcCorr => (others=>toSlv(2**14,15)),
+    adcCorr => (others=>toSlv(2**15,16)),
     addr    => toSlv(0,MAXACCUM_C-3),
     wraddr  => toSlv(0,MAXACCUM_C-3),
     rdaddr  => toSlv(1,MAXACCUM_C-3) );
@@ -67,10 +91,11 @@ begin
 
   tOut   <= r.tOut;
   adcOut <= r.adcOut;
-
+  oor    <= r.oor;
+  
   U_RAM : entity surf.SimpleDualPortRam
     generic map (
-      DATA_WIDTH_G => 4*(12+3),
+      DATA_WIDTH_G => 4*15,
       ADDR_WIDTH_G => MAXACCUM_C-3 )
     port map (
       clka     => clk,
@@ -95,9 +120,11 @@ begin
     variable q : slv(15 downto 0);
     variable start : sl;
     constant OUT_OF_RANGE : slv(14 downto 0) := (others=>'1');
+    constant CORR_SHIFT   : slv(15 downto 0) := toSlv(16384,16);
   begin
     v := r;
 
+    v.oor  := '0';
     v.tNew := tIn;
     
     start := '0';
@@ -108,32 +135,44 @@ begin
     end loop;
     
     if start = '1' then
+      -- latch the correction
+      n := conv_integer(accShift)-FRACBITS_C;
       for i in 0 to 3 loop
-        v.adcCorr(i) := r.adcRun(i)(14+n downto n);
+        v.adcCorr(i) := r.adcRun(i)(15+n downto n);
       end loop;
     end if;
     
     k := 0;
     for j in 0 to 9 loop
       for i in 0 to 3 loop
-        q := '0' & adcIn(k) & "000";
+        q := resize(adcIn(k) & toSlv(0,FRACBITS_C),16);
         q := q + resize(baseline,16) - resize(v.adcCorr(i),16);
+        v.adcNew(k) := q(14 downto 0);
         if q(15) = '1' then -- underflow/overflow
-          v.adcNew(k) := OUT_OF_RANGE;
-        else
-          v.adcNew(k) := q(14 downto 0);
+          v.oor := '1';
+          --v.adcNew(k) := OUT_OF_RANGE;
         end if;
         k := k+1;
       end loop;
     end loop;
 
+    --
+    --  Prepend the correction values.
+    --
     v.adcOut := r.adcNew;
     v.tOut   := r.tNew;
     k := 0;
     for j in 0 to 9 loop
       for i in 0 to 3 loop
         if r.tNew(j)(0)='1' then
-          v.adcOut(k) := r.adcCorr(i);
+          --  Map baseline constants to 15-bits: expect value ~2<<15 +- a small number
+          --  Subtract 2<<14 to bring it within 15-bits
+          q := r.adcCorr(i);
+          q := q - CORR_SHIFT;
+          v.adcOut(k) := resize(q,15);
+          if q(15) = '1' then
+            v.oor := '1';
+          end if;
         end if;
         k := k+1;
       end loop;
@@ -150,18 +189,26 @@ begin
       end loop;
     end loop;
 
+    --  block ram doesn't reinitialize on reset, so set this flag to qualify
+    --  when all entries have been written.
+    n := conv_integer(accShift)-3;
+    if uAnd(r.wraddr(n-1 downto 0))='1' then
+      v.init := '0';
+    end if;
+    
     for i in 0 to 3 loop
-      v.adcRun(i) := r.adcRun(i) + r.adcSum(i) - adcSumO(i);
+      if r.init = '1' then
+        v.adcRun(i) := r.adcRun(i) + r.adcSum(i);
+      else
+        v.adcRun(i) := r.adcRun(i) + r.adcSum(i) - adcSumO(i);
+      end if;
     end loop;
 
+    --  limit ram address to range of running sums
     v.addr   := r.addr+1;
-    n := conv_integer(accShift)-3;
     v.wraddr := resize(r.addr(n-1 downto 0),MAXACCUM_C-3);
     v.rdaddr := resize(v.addr(n-1 downto 0),MAXACCUM_C-3);
-    -- if r.rdaddr(n-1 downto 0) = toSlv(-1,n) then
-    --   v.rdaddr := (others=>'0');
-    -- end if;
-    
+
     if rst = '1' then
       v := REG_INIT_C;
     end if;

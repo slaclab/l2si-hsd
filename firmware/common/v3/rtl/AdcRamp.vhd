@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2019-12-06
+-- Last update: 2024-10-10
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -44,6 +44,7 @@ entity AdcRamp is
          dmaClk      : out sl;
          ready       : in  sl;
          adcOut      : out AdcDataArray(3 downto 0);
+         serOut      : out AdcWord;
          trigSel     : in  sl;
          trigOut     : out slv(ROW_SIZE-1 downto 0)
     );
@@ -54,7 +55,7 @@ architecture behavior of AdcRamp is
   signal adcI,adcO        : AdcDataArray (3 downto 0);
 
   signal trigIn  : slv(ROW_SIZE-1 downto 0) := (others=>'0');
-   
+  
 begin
 
   dmaClk  <= adcClk;
@@ -80,15 +81,19 @@ begin
      variable s : slv(15 downto 0) := (others=>'0');
      variable d : slv( 2 downto 0) := (others=>'0');
      variable t : integer          := 0;
+     variable ch : integer := 0;
    begin
      if rst = '1' then
        s := x"0c00";
        d := (others=>'0');
        t := 0;
      elsif rising_edge(phyClk) then
-       for ch in 0 to 3 loop
-         adcI(ch).data <= resize(s,AdcWord'length) & adcI(ch).data(ROW_SIZE-1 downto 1);
-       end loop;
+       serOut <= s;
+       ch := ch+1;
+       if ch=4 then
+         ch := 0;
+       end if;
+       adcI(ch).data <= resize(s,AdcWord'length) & adcI(ch).data(ROW_SIZE-1 downto 1);
        
        trigIn <= d(0) & trigIn(ROW_SIZE-1 downto 1);
        d := trigSel & d(2 downto 1);

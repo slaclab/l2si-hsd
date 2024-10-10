@@ -24,11 +24,11 @@ port (
     y        : out Slv16Array  (ILV_G*ROW_SIZE+ILV_G-1 downto 0);
     tout     : out Slv2Array   (      ROW_SIZE   downto 0);
     yv       : out slv         (      ROW_IDXB-1 downto 0);
+    oor      : out sl;
     axilReadMaster  : in  AxiLiteReadMasterType;
     axilReadSlave   : out AxiLiteReadSlaveType;
     axilWriteMaster : in  AxiLiteWriteMasterType;
     axilWriteSlave  : out AxiLiteWriteSlaveType );
-
 end;
 
 architecture behav of hsd_thr_ilv_native_fine is
@@ -85,6 +85,7 @@ architecture behav of hsd_thr_ilv_native_fine is
     y          : Slv16Array(ILV_G*ROW_SIZE+ILV_G-1 downto 0); -- readout
     t          : Slv2Array (      ROW_SIZE downto 0);
     yv         : slv       (      ROW_IDXB-1 downto 0);  -- number of valid
+    oor        : sl;
     --  baseline correction configuration
     baseline   : slv(14 downto 0);
     acc_shift  : slv( 3 downto 0);
@@ -125,6 +126,7 @@ architecture behav of hsd_thr_ilv_native_fine is
     y          => (others=>(others=>'0')),
     t          => (others=>(others=>'0')),
     yv         => (others=>'0'),
+    oor        => '0',
     --  baseline correction configuration
     baseline   => BASELINE,
     acc_shift  => toSlv(12,4),
@@ -140,7 +142,8 @@ architecture behav of hsd_thr_ilv_native_fine is
   constant ADCWLEN_C : integer := 15;
   signal xC : Slv15Array(ILV_G*ROW_SIZE-1 downto 0);
   signal tC : Slv2Array (ROW_SIZE-1 downto 0);
-
+  signal oorC, osave : sl;
+  
   signal xsave : Slv15Array(ILV_G*ROW_SIZE-1 downto 0);
   signal tsave : Slv2Array (      ROW_SIZE-1 downto 0);
 
@@ -161,11 +164,13 @@ begin
         tIn      => tin,
         adcIn    => x,
         tOut     => tC,
-        adcOut   => xC);
+        adcOut   => xC,
+        oor      => oorC );
   end generate GEN_CORR;
 
   NO_GEN_CORR : if not BASECORR generate
-    tC <= tIn;
+    tC   <= tIn;
+    oorC <= '0';
     GEN_XC : for i in xC'range generate
       xC(i) <= resize(x(i),15);
     end generate GEN_XC;
@@ -199,8 +204,19 @@ begin
                    doutb               => dout );
     end block;
   end generate;
-  
-  comb : process ( ap_rst_n, r, xC, tC, xsave, tsave,
+
+  U_OOR : entity surf.SimpleDualPortRam
+    generic map ( DATA_WIDTH_G => 1,
+                  ADDR_WIDTH_G => r.waddr'length )
+    port map ( clka                => ap_clk,
+               wea                 => '1',
+               addra               => r.waddr,
+               dina(0)             => oorC,
+               clkb                => ap_clk,
+               addrb               => r.raddr,
+               doutb(0)            => osave );
+    
+  comb : process ( ap_rst_n, r, xC, tC, xsave, tsave, osave,
                    axilWriteMaster, axilReadMaster ) is
     variable v      : RegType;
     variable ep     : AxiLiteEndPointType;
@@ -371,7 +387,8 @@ begin
       v.y(i+ILV_G*ROW_SIZE) := x"8000";
     end loop;
     v.t     := "00" & tsave;
-
+    v.oor   := osave;
+    
     -- check for trigger window opening/closing
     --   only one may open/close within a row, but multiple
     --   windows may remain open
@@ -471,6 +488,7 @@ begin
     y    <= r.y;
     yv   <= r.yv;
     tout <= r.t;
+    oor  <= r.oor;
     
     if ap_rst_n = '0' then
       v := REG_INIT_C;

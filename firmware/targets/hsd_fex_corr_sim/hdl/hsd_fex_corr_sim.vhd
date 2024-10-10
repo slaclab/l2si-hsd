@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2024-10-01
+-- Last update: 2024-10-10
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -40,7 +40,8 @@ architecture top_level_app of hsd_fex_corr_sim is
 
   --  Number of ADC data samples passed on one clk cycle
   constant NUMWORDS_C : integer := 40;
-  constant NUMACCUM_C : integer := 12;
+  --constant NUMACCUM_C : integer := 12;
+  constant NUMACCUM_C : integer := 6;
   constant BASELINE_C : slv(14 downto 0) := toSlv(2**14,15);
   
   signal clk64g : sl;
@@ -111,7 +112,7 @@ begin
                adcIn     => adcIn,
                adcOut    => adcOut );
 
-  GEN_HWCORR : if false generate
+  GEN_HWCORR : if true generate
     tIn(0)(0) <= startBase;
     
     U_CORR : entity work.hsd_baseline_corr
