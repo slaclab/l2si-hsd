@@ -121,7 +121,7 @@ package QuadAdcPkg is
   constant RAM_ADDR_WIDTH_C : integer := bitSize(RAM_DEPTH_C-1);
   constant CACHE_ADDR_LEN_C : integer := RAM_ADDR_WIDTH_C+IDX_BITS;
   constant SKIP_CHAR : slv(1 downto 0) := "10";
-  constant CACHETYPE_LEN_C : integer := 32 + 2*IDX_BITS+2*CACHE_ADDR_LEN_C;
+  constant CACHETYPE_LEN_C : integer := 33 + 2*IDX_BITS+2*CACHE_ADDR_LEN_C;
   
   type CacheStateType is ( EMPTY_S,  -- buffer empty
                            OPEN_S,   -- buffer filling
@@ -150,6 +150,7 @@ package QuadAdcPkg is
     valid  : sl;
     skip   : sl;
     ovflow : sl;
+    oor    : sl;
   end record;
   constant CACHE_INIT_C : CacheType := (
     state  => EMPTY_S,
@@ -164,7 +165,8 @@ package QuadAdcPkg is
     didxs  => 0,
     valid  => '0',
     skip   => '0',
-    ovflow => '0' );
+    ovflow => '0',
+    oor    => '0');
   
   type CacheArray is array(natural range<>) of CacheType;
   type CacheStatusArray is array(natural range<>) of CacheArray(MAX_OVL_C-1 downto 0);
@@ -409,6 +411,7 @@ package body QuadAdcPkg is
     assignSlv(i, vector, status.valid);
     assignSlv(i, vector, status.skip);
     assignSlv(i, vector, status.ovflow);
+    assignSlv(i, vector, status.oor);
     return vector;
   end function;
   
@@ -442,6 +445,7 @@ package body QuadAdcPkg is
     assignRecord(i, vector, status.valid);
     assignRecord(i, vector, status.skip);
     assignRecord(i, vector, status.ovflow);
+    assignRecord(i, vector, status.oor);
     return status;
   end function;
 

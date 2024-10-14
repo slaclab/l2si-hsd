@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2024-04-29
+-- Last update: 2024-10-10
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -58,7 +58,8 @@ architecture top_level_app of hsd_6400m_sim is
 
    constant NCHAN_C : integer := 2;
    constant NFMC_C  : integer := 2;
-
+   constant NUMWORDS_C : integer := 4*ROW_SIZE;
+   
    signal rst      : sl;
    
     -- AXI-Lite and IRQ Interface
@@ -91,10 +92,7 @@ architecture top_level_app of hsd_6400m_sim is
    signal phyClk            : sl;
    signal refTimingClk      : sl;
    signal refTimingRst      : sl;
-   signal adcO              : AdcDataArray(3 downto 0);
    signal adcI              : AdcDataArray(4*NFMC_C-1 downto 0);
-   signal trigIn            : slv(ROW_SIZE-1 downto 0);
-   signal trigSel           : slv(1 downto 0);
    signal trigSlot          : slv(1 downto 0);
    
 --   constant AXIS_CONFIG_C : AxiStreamConfigType := ssiAxiStreamConfig(16);
@@ -154,7 +152,7 @@ architecture top_level_app of hsd_6400m_sim is
    signal fmcClk  : slv(NFMC_C-1 downto 0);
    signal msgConfig    : XpmPartMsgConfigType := XPM_PART_MSG_CONFIG_INIT_C;
 
-   constant CMDS_C : AxiLiteWriteCmdArray(0 to 25) := (
+   constant CMDS_C : AxiLiteWriteCmdArray(0 to 27) := (
      --  Chip Adc Reg
      ( addr => x"00000010", value => x"000000ff" ), -- assert DMA rst
      ( addr => x"00000010", value => x"00000000" ), -- release DMA rst
@@ -166,16 +164,18 @@ architecture top_level_app of hsd_6400m_sim is
      ( addr => x"00001014", value => x"00000064" ), -- fexLen/prescale
      ( addr => x"00001018", value => x"00040C00" ), -- almostFull
      ( addr => x"00001020", value => x"00000004" ), -- fexBegin
-     ( addr => x"00001024", value => x"00100064" ), -- fexLen/prescale
+     ( addr => x"00001024", value => x"00000064" ), -- fexLen/prescale
      ( addr => x"00001028", value => x"00040C00" ), -- almostFull
      ( addr => x"00001030", value => x"00000004" ), -- fexBegin
      ( addr => x"00001034", value => x"00200064" ), -- fexLen/prescale
      ( addr => x"00001038", value => x"00040C00" ), -- almostFull
-     ( addr => x"00001210", value => x"00000801" ), -- prescale
-     ( addr => x"00001218", value => x"0000080E" ), -- fexLen/delay
-     ( addr => x"00001220", value => x"00000001" ), -- almostFull
-     ( addr => x"00001228", value => x"00000002" ), -- prescale
-     ( addr => x"00001000", value => x"00010000" ), -- fexEnable
+     ( addr => x"00001210", value => x"00000801" ), -- xlo
+     ( addr => x"00001218", value => x"0000080E" ), -- xhi
+     ( addr => x"00001220", value => x"00000001" ), -- tpre
+     ( addr => x"00001228", value => x"00000002" ), -- tpost
+     ( addr => x"00001240", value => x"00004000" ), -- baseline
+     ( addr => x"00001244", value => x"00000006" ), -- acc_shift
+     ( addr => x"00001000", value => x"00000003" ), -- fexEnable
      -- Chip Adc Reg
      ( addr => x"00000010", value => x"C0000000" ), -- enable
      -- XpmMessageAligner
@@ -194,6 +194,11 @@ architecture top_level_app of hsd_6400m_sim is
    signal xpmConfig    : XpmConfigType := XPM_CONFIG_INIT_C;
    signal xpmStream    : XpmStreamType := XPM_STREAM_INIT_C;
    signal timingStream : XpmStreamType := XPM_STREAM_INIT_C;
+
+   signal adcIn  : AdcWordArray(NUMWORDS_C-1 downto 0);
+   signal adcOut : Slv15Array  (NUMWORDS_C-1 downto 0);
+   signal adcSerialIn  : AdcWord;
+   signal adcSerialOut : slv(15 downto 0);
 
    type RegType is record
      advance : sl;
@@ -221,7 +226,7 @@ begin
     --  Need the full Xpm simulation for L0Raw
     xpmConfig.partition(0).master <= '1';
     xpmConfig.partition(0).l0Select.enabled <= '0';
-    xpmConfig.partition(0).l0Select.rateSel <= x"0000";
+    xpmConfig.partition(0).l0Select.rateSel <= x"0002";
     xpmConfig.partition(0).l0Select.destSel <= x"8000";
     xpmConfig.partition(0).l0Select.groups <= x"01";
     xpmConfig.partition(0).l0Select.rawPeriod <= x"0000A";
@@ -251,25 +256,25 @@ begin
    U_ClkSim : entity work.ClkSim
      generic map ( VCO_HALF_PERIOD_G => 21.0 ps,
                    TIM_DIVISOR_G     => 64,
-                   PHY_DIVISOR_G     => 2 )
+                   PHY_DIVISOR_G     => 2,
+                   ADC_DIVISOR_G     => 80 )
      port map ( phyClk   => phyClk,
-                evrClk   => refTimingClk );
+                evrClk   => refTimingClk,
+                adcClk   => dmaClk );
 
-   U_QIN : entity work.AdcRamp
-     generic map ( DATA_LO_G => x"0000",
-                   DATA_HI_G => x"0200" )
-     port map ( rst      => rst,
-                phyClk   => phyClk,
-                dmaClk   => dmaClk,
-                ready    => axilDone,
-                adcOut   => adcO,
-                trigSel  => trigSel(0),
-                trigOut  => trigIn );
+  -- read the raw data from a file
+  U_ADC_In : entity work.AdcDataFromFile
+    generic map ( FILENAME_G => "adcin.dat",
+                  NUMWORDS_G => NUMWORDS_C )
+    port map ( rst      => rst,
+               clk      => dmaClk,
+               adcWords => adcIn,
+               start    => open );
 
    GEN_ADC : for i in 0 to 3 generate
      GEN_ROW : for j in 0 to ROW_SIZE-1 generate
-       adcI(i+0).data(j) <= x"80" & adcO(i).data(j)(3 downto 0);
-       adcI(i+4).data(j) <= x"80" & adcO(i).data(j)(3 downto 0);
+       adcI(i+0).data(j) <= adcIn(j*4+i);
+       adcI(i+4).data(j) <= adcIn(j*4+i);
      end generate;
    end generate;
    
@@ -484,4 +489,30 @@ begin
     end if;
   end process;
 
+  --  this is just for display
+  adc64g_p : process (phyClk) is
+    variable adcDataIn  : AdcWordArray(NUMWORDS_C-1 downto 0) := (others=>x"000");
+    variable adcDataOut : Slv15Array(NUMWORDS_C-1 downto 0) := (others=>toSlv(0,15));
+    variable index : integer := NUMWORDS_C-1;
+  begin
+    if rising_edge(phyClk) then
+      if rst = '1' then
+        adcSerialIn  <= x"000";
+        adcSerialOut <= x"0000";
+        index        := NUMWORDS_C-1;
+        adcDataIn    := (others=>x"000");
+        adcDataOut   := (others=>toSlv(0,15));
+      else
+        if index = NUMWORDS_C-1 then
+          index      := 0;
+          adcDataIn  := adcIn;
+          adcDataOut := adcOut;
+        end if;
+        adcSerialIn  <= adcDataIn (index);
+        adcSerialOut <= resize(adcDataOut(index),16);
+        index := index + 1;
+      end if;
+    end if;
+  end process adc64g_p;
+  
 end top_level_app;
