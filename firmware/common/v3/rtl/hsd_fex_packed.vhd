@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2016-01-04
--- Last update: 2024-10-10
+-- Last update: 2024-10-25
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -149,6 +149,8 @@ architecture mapping of hsd_fex_packed is
     ilerror    : slv     ( 2 downto 0);
     rsperror   : slv     ( ROW_SIZE-1 downto 0);
     rspdata    : slv     (63 downto 0);
+    ovflow     : sl;  -- only for simulation
+    oor        : sl;  -- only for simulation
   end record;
   constant REG_INIT_C : RegType := (
     tout       => (others=>(others=>'0')),
@@ -173,7 +175,9 @@ architecture mapping of hsd_fex_packed is
     sperror    => (others=>'0'),
     ilerror    => (others=>'0'),
     rsperror   => (others=>'0'),
-    rspdata    => (others=>'0') );
+    rspdata    => (others=>'0'),
+    ovflow     => '0',
+    oor        => '0' );
 
   signal r    : RegType := REG_INIT_C;
   signal r_in : RegType;
@@ -219,8 +223,10 @@ architecture mapping of hsd_fex_packed is
 
   procedure resetCache( cache : inout CacheType ) is
   begin
-    cache.state := EMPTY_S;
-    cache.trigd := WAIT_T;
+    cache.state  := EMPTY_S;
+    cache.trigd  := WAIT_T;
+    cache.ovflow := '0';
+    cache.oor    := '0';
   end procedure;
 
 begin
@@ -583,6 +589,8 @@ begin
               --
               --  Form stream header word
               --
+              v.oor    := r.cache(i).oor;     -- tracing this in simulation
+              v.ovflow := r.cache(i).ovflow;  -- tracing this in simulation
               q.first := '1';
               q.axisMaster.tValid := '1';
               pload := r.cache(i).didxs;

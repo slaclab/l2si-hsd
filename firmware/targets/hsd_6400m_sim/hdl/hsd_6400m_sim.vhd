@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2024-10-10
+-- Last update: 2024-10-25
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -161,19 +161,19 @@ architecture top_level_app of hsd_6400m_sim is
      ( addr => x"0000001C", value => x"00000100" ), -- 256 samples
      -- QuadAdcInterleavePacked
      ( addr => x"00001010", value => x"00000004" ), -- fexBegin
-     ( addr => x"00001014", value => x"00000064" ), -- fexLen/prescale
+     ( addr => x"00001014", value => x"00000044" ), -- fexLen/prescale
      ( addr => x"00001018", value => x"00040C00" ), -- almostFull
      ( addr => x"00001020", value => x"00000004" ), -- fexBegin
-     ( addr => x"00001024", value => x"00000064" ), -- fexLen/prescale
+     ( addr => x"00001024", value => x"00000044" ), -- fexLen/prescale
      ( addr => x"00001028", value => x"00040C00" ), -- almostFull
      ( addr => x"00001030", value => x"00000004" ), -- fexBegin
-     ( addr => x"00001034", value => x"00200064" ), -- fexLen/prescale
+     ( addr => x"00001034", value => x"00200044" ), -- fexLen/prescale
      ( addr => x"00001038", value => x"00040C00" ), -- almostFull
      ( addr => x"00001210", value => x"00000801" ), -- xlo
      ( addr => x"00001218", value => x"0000080E" ), -- xhi
      ( addr => x"00001220", value => x"00000001" ), -- tpre
      ( addr => x"00001228", value => x"00000002" ), -- tpost
-     ( addr => x"00001240", value => x"00004000" ), -- baseline
+     ( addr => x"00001240", value => x"00006000" ), -- baseline
      ( addr => x"00001244", value => x"00000006" ), -- acc_shift
      ( addr => x"00001000", value => x"00000003" ), -- fexEnable
      -- Chip Adc Reg
@@ -232,8 +232,8 @@ begin
     xpmConfig.partition(0).l0Select.rawPeriod <= x"0000A";
 --  xpmConfig.partition(0).pipeline.depth_fids <= toSlv(90,8);
 --  xpmConfig.partition(0).pipeline.depth_clks <= toSlv(90*200,16);
-    xpmConfig.partition(0).pipeline.depth_fids <= toSlv(10,8);
-    xpmConfig.partition(0).pipeline.depth_clks <= toSlv(10*200,16);
+    xpmConfig.partition(0).pipeline.depth_fids <= toSlv(90,8);
+    xpmConfig.partition(0).pipeline.depth_clks <= toSlv(90*200,16);
 
     xpmConfig.dsLink(0).enable    <= '1';
 
@@ -487,6 +487,10 @@ begin
         end loop;
       end if;
     end if;
+
+    for i in 0 to NFMC_C-1 loop
+      dmaIbSlave(i).tReady <= '1';
+    end loop;
   end process;
 
   --  this is just for display

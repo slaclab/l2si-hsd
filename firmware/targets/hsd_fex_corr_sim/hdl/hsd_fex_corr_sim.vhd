@@ -5,7 +5,7 @@
 -- Author     : Matt Weaver <weaver@slac.stanford.edu>
 -- Company    : SLAC National Accelerator Laboratory
 -- Created    : 2015-07-10
--- Last update: 2024-10-10
+-- Last update: 2024-10-22
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -42,7 +42,7 @@ architecture top_level_app of hsd_fex_corr_sim is
   constant NUMWORDS_C : integer := 40;
   --constant NUMACCUM_C : integer := 12;
   constant NUMACCUM_C : integer := 6;
-  constant BASELINE_C : slv(14 downto 0) := toSlv(2**14,15);
+  constant BASELINE_C : slv(14 downto 0) := resize(x"6000",15);
   
   signal clk64g : sl;
   signal rst, rst160, clk160 : sl;
@@ -101,30 +101,18 @@ begin
                adcWords => adcIn,
                start    => startBase );
 
-  -- correct the data
-  U_CORR_SIM : entity work.hsd_fex_corr
-    generic map ( NUMWORDS_G => NUMWORDS_C,
-                  NUMACCUM_G => NUMACCUM_C,
-                  BASELINE_G => BASELINE_C )
+  tIn(0)(0) <= startBase;
+  
+  U_CORR : entity work.hsd_baseline_corr
     port map ( rst       => rst160,
                clk       => clk160,
-               start     => startBase,
+               accShift  => toSlv(NUMACCUM_C,4),
+               baseline  => BASELINE_C,
+               tIn       => tIn,
                adcIn     => adcIn,
-               adcOut    => adcOut );
-
-  GEN_HWCORR : if true generate
-    tIn(0)(0) <= startBase;
-    
-    U_CORR : entity work.hsd_baseline_corr
-      port map ( rst       => rst160,
-                 clk       => clk160,
-                 accShift  => toSlv(NUMACCUM_C,4),
-                 baseline  => BASELINE_C,
-                 tIn       => tIn,
-                 adcIn     => adcIn,
-                 tOut      => tOut,
-                 adcOut    => adcOut2 );
-  end generate;
+               tOut      => tOut,
+               adcOut    => adcOut,
+               oor       => open );
   
   -- write the corrected data to a file
   U_ADC_Out : entity work.AdcDataToFile
