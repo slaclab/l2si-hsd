@@ -113,39 +113,35 @@ set_property PACKAGE_PIN AY18 [get_ports {prsnt_m2c_l[1]}]
 #create_clock -name pgpRefClk  -period  6.40 [get_ports pgpRefClkP]
 create_clock -period 5.380 -name pgpRefClk [get_ports pgpRefClkP]
 
+set_clock_groups -asynchronous \
+		 -group [get_clocks -of_objects [get_pins U_Core/U_Clk/MmcmGen.U_Mmcm/CLKOUT0]] \
+		 -group [get_clocks pgpRefClk]
+
+set_clock_groups -asynchronous \
+		 -group [get_clocks -of_objects [get_pins U_Core/U_Clk/MmcmGen.U_Mmcm/CLKOUT0]] \
+		 -group [get_clocks -of_objects [get_pins xcvr_wrapper_inst0/RefClk_BUFG_Div2/O]] \
+		 -group [get_clocks -of_objects [get_pins U_Core/U_Core/REAL_PCIE.U_AxiPciePhy/U_AxiPcie/inst/pcie3_ip_i/inst/AbacoPc821PciePhy_pcie3_ip_gt_top_i/phy_clk_i/bufg_gt_userclk/O]] \
+		 -group [get_clocks [list [get_clocks -of_objects [get_pins {GEN_PGP[4].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[5].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[6].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[7].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[0].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[1].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[2].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[3].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]]]] \
+		 -group [get_clocks [list [get_clocks -of_objects [get_pins {GEN_PGP[4].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[5].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[6].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[7].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[0].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[1].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[2].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]] \
+		 [get_clocks -of_objects [get_pins {GEN_PGP[3].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_6G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp6G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]]]]
+
 ##############################################
 # Crossing Domain Clocks: Timing Constraints #
 ##############################################
 
-create_generated_clock -name pgpClk0 [get_pins {GEN_PGP[0].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_10G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp10G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]
-create_generated_clock -name pgpClk1 [get_pins {GEN_PGP[1].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_10G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp10G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]
-create_generated_clock -name pgpClk2 [get_pins {GEN_PGP[2].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_10G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp10G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]
-create_generated_clock -name pgpClk3 [get_pins {GEN_PGP[3].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_10G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp10G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]
-
-set_clock_groups -asynchronous -group [get_clocks -include_generated_clocks pgpRefClk] -group [get_clocks -include_generated_clocks pciRefClkP]
-
-
-set_clock_groups -asynchronous \
-                 -group [get_clocks [get_clocks -of_objects [get_pins {GEN_PGP[0].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_186.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp186_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_tx_user_clocking_internal.gen_single_instance.gtwiz_userclk_tx_inst/gen_gtwiz_userclk_tx_main.bufg_gt_usrclk2_inst/O}]]] \
-                 -group [get_clocks [get_clocks -of_objects [get_pins {GEN_PGP[0].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_186.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp186_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]]]
-
-create_generated_clock -name dmaClk [get_pins xcvr_wrapper_inst0/RefClk_BUFG_Div2/O]
-set_clock_groups -asynchronous \
-		 -group [get_clocks dmaClk] \
-		 -group [get_clocks pgpClk0] \
-		 -group [get_clocks pgpClk1] \
-		 -group [get_clocks pgpClk2] \
-		 -group [get_clocks pgpClk3]
-
-create_generated_clock -name phyClk0 [get_pins {GEN_PGP[0].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_10G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp10G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]
-create_generated_clock -name phyClk1 [get_pins {GEN_PGP[1].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_10G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp10G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]
-create_generated_clock -name phyClk2 [get_pins {GEN_PGP[2].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_10G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp10G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]
-create_generated_clock -name phyClk3 [get_pins {GEN_PGP[3].U_Pgp/U_Pgp3/U_Pgp3GthUsIpWrapper_1/GEN_10G.U_Pgp3GthUsIp/inst/gen_gtwizard_gthe3_top.Pgp3GthUsIp10G_gtwizard_gthe3_inst/gen_gtwizard_gthe3.gen_rx_user_clocking_internal.gen_single_instance.gtwiz_userclk_rx_inst/gen_gtwiz_userclk_rx_main.bufg_gt_usrclk2_inst/O}]
-
-set_clock_groups -asynchronous -group [get_clocks pgpClk0] -group [get_clocks phyClk0]
-set_clock_groups -asynchronous -group [get_clocks pgpClk1] -group [get_clocks phyClk1]
-set_clock_groups -asynchronous -group [get_clocks pgpClk2] -group [get_clocks phyClk2]
-set_clock_groups -asynchronous -group [get_clocks pgpClk3] -group [get_clocks phyClk3]
 
 set_property C_CLK_INPUT_FREQ_HZ 300000000 [get_debug_cores dbg_hub]
 set_property C_ENABLE_CLK_DIVIDER false [get_debug_cores dbg_hub]
